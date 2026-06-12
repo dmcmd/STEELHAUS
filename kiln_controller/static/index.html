@@ -1,0 +1,3601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0a0a0a">
+<title>STEELHAUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a;--panel:#111214;--panel2:#181a1e;--border:#252830;
+  --accent:#ff6b1a;--accent2:#ff9c1a;--blue:#4da6ff;--green:#2ecc71;
+  --red:#e74c3c;--yellow:#f39c12;--text:#e8eaf0;--text2:#8892a0;
+  --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;--radius:12px;
+  --hdr:57px;--tabs:56px;
+}
+
+/* ── Reset ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;user-select:none;}
+input,textarea{user-select:text;-webkit-user-select:text;}
+
+/* ── Root layout — body scrolls normally, header/tabs/estop are sticky/fixed ── */
+
+html{height:100%;}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  min-height:100%;
+  padding-top:calc(var(--hdr) + var(--tabs));
+  padding-bottom:8px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+
+}
+
+body.sim-mode{outline:4px solid var(--yellow);outline-offset:-4px;}
+
+/* ── Fixed header ── */
+.header{
+  position:fixed;
+  top:0;
+  left:0;right:0;
+  height:var(--hdr);z-index:300;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;
+  background:var(--panel);border-bottom:2px solid var(--border);
+}
+.logo{font-family:var(--mono);font-size:26px;color:var(--accent);letter-spacing:3px;font-weight:bold;}
+.logo.sim{color:var(--yellow);}
+.sim-badge{display:none;background:var(--yellow);color:#000;font-family:var(--mono);font-size:13px;font-weight:bold;padding:4px 10px;border-radius:6px;letter-spacing:1px;}
+.sim-badge.on{display:block;}
+.conn-badge{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);font-family:var(--mono);}
+.conn-dot{width:12px;height:12px;border-radius:50%;background:var(--red);transition:background .3s;flex-shrink:0;}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 8px var(--green);}
+
+/* ── Fixed tabs ── */
+.tabs{
+  position:fixed;
+  top:var(--hdr);
+  left:0;right:0;
+  height:var(--tabs);z-index:299;
+  display:flex;background:var(--panel);border-bottom:2px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;
+  touch-action:pan-x;
+}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{
+  flex:1;min-width:80px;height:var(--tabs);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text2);cursor:pointer;
+  border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;
+}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── Fixed E-Stop bar ── */
+/* estop-bar removed */
+.estop-bar-DISABLED{
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  padding:8px 16px;
+  padding-bottom:max(8px,env(safe-area-inset-bottom));
+  background:#0d0d0f;border-top:2px solid rgba(231,76,60,.4);
+}
+.estop-btn-DISABLED{
+  width:100%;padding:18px;background:var(--red);border:none;
+  border-radius:var(--radius);color:#fff;font-family:var(--mono);
+  font-size:24px;font-weight:bold;letter-spacing:3px;cursor:pointer;
+  box-shadow:0 4px 24px rgba(231,76,60,.4);
+}
+
+
+/* ── Pages ── */
+.page{display:none;padding:16px;}
+.page.active{display:block;}
+
+/* ── Temp hero ── */
+.temp-hero{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px 16px 20px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+}
+.temp-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.7;}
+.temp-value{font-family:var(--mono);font-size:110px;line-height:1;color:var(--accent);
+  text-shadow:0 0 40px rgba(255,107,26,.35);transition:color .5s;letter-spacing:-2px;}
+.temp-value.cool{color:var(--blue);text-shadow:0 0 30px rgba(77,166,255,.25);}
+.temp-value.very-hot{color:var(--red);text-shadow:0 0 40px rgba(231,76,60,.45);}
+.temp-unit{font-size:40px;color:var(--text2);margin-left:6px;}
+.temp-meta{display:flex;justify-content:space-around;margin-top:18px;gap:8px;}
+.temp-stat{text-align:center;flex:1;}
+.temp-stat .label{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:6px;}
+.temp-stat .val{font-family:var(--mono);font-size:26px;color:var(--text);}
+.gauge-wrap{margin:14px 0 0;}
+.gauge-label{display:flex;justify-content:space-between;font-size:14px;color:var(--text2);margin-bottom:8px;font-family:var(--mono);}
+.gauge-track{height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;}
+.gauge-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:5px;transition:width 1s ease;min-width:2px;}
+.gauge-fill.cool{background:linear-gradient(90deg,var(--blue),#6ec6ff);}
+
+/* ── START/STOP ── */
+.heater-btn{
+  width:100%;padding:28px 20px;border:none;border-radius:var(--radius);
+  font-family:var(--mono);font-size:32px;font-weight:bold;letter-spacing:4px;
+  cursor:pointer;transition:all .2s;margin-bottom:14px;
+}
+.heater-btn.start{background:var(--green);color:#fff;box-shadow:0 6px 28px rgba(46,204,113,.4);}
+.heater-btn.start:active{transform:scale(.97);box-shadow:none;}
+.heater-btn.stop{background:#c0392b;color:#fff;box-shadow:0 6px 28px rgba(192,57,43,.4);}
+.heater-btn.stop:active{transform:scale(.97);box-shadow:none;}
+
+/* ── Setpoint tap row ── */
+.setpoint-row{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;margin-bottom:14px;cursor:pointer;transition:border-color .2s;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.setpoint-row:active{border-color:var(--accent);}
+.setpoint-row-label{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:6px;}
+.setpoint-row-val{font-family:var(--mono);font-size:36px;color:var(--text);}
+.setpoint-row-icon{font-size:28px;color:var(--accent);opacity:.7;}
+
+/* ── Status rows ── */
+.status-row{display:flex;align-items:center;justify-content:space-between;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;margin-bottom:14px;}
+.status-row-label{font-size:18px;font-weight:600;}
+.status-row-sub{font-size:14px;color:var(--text2);margin-top:4px;}
+.status-dot{width:24px;height:24px;border-radius:50%;background:var(--red);
+  flex-shrink:0;box-shadow:0 0 8px rgba(231,76,60,.4);transition:background .3s,box-shadow .3s;}
+.status-dot.on{background:var(--green);box-shadow:0 0 12px rgba(46,204,113,.6);}
+
+/* ── Program bar ── */
+.prog-bar{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+.prog-name{font-weight:700;font-size:18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.prog-state{font-size:13px;font-family:var(--mono);padding:4px 10px;border-radius:5px;text-transform:uppercase;letter-spacing:1px;}
+.prog-state.running{background:rgba(46,204,113,.15);color:var(--green);}
+.prog-state.paused{background:rgba(243,156,18,.15);color:var(--yellow);}
+.prog-state.completed{background:rgba(77,166,255,.15);color:var(--blue);}
+.prog-state.idle,.prog-state.aborted{background:rgba(136,146,160,.15);color:var(--text2);}
+.prog-time-row{font-size:16px;color:var(--text2);font-family:var(--mono);margin-bottom:12px;}
+
+/* ── Program step list (dashboard) ── */
+.prog-steps{display:flex;flex-direction:column;gap:6px;margin:12px 0;}
+.prog-step{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:8px;border:1px solid var(--border);background:var(--panel2);
+  transition:border-color .3s,background .3s;}
+.prog-step.done{opacity:.45;}
+.prog-step.active{border-color:var(--accent);background:rgba(255,107,26,.07);}
+.prog-step.active-soak{border-color:var(--blue);background:rgba(77,166,255,.07);}
+.prog-step-num{width:26px;height:26px;border-radius:50%;background:var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  font-weight:700;color:var(--text2);flex-shrink:0;font-family:var(--mono);}
+.prog-step.done .prog-step-num{background:var(--panel2);color:var(--green);}
+.prog-step.active .prog-step-num{background:var(--accent);color:#fff;}
+.prog-step.active-soak .prog-step-num{background:var(--blue);color:#fff;}
+.prog-step-info{flex:1;min-width:0;}
+.prog-step-label{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prog-step.done .prog-step-label{color:var(--text2);}
+.prog-step-sub{font-size:13px;color:var(--text2);font-family:var(--mono);margin-top:2px;}
+.prog-step-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
+.prog-step-bar{height:100%;border-radius:2px;transition:width 1s ease;width:0%;}
+.prog-step.active .prog-step-bar{background:var(--accent);}
+.prog-step.active-soak .prog-step-bar{background:var(--blue);}
+.prog-step-check{font-size:16px;color:var(--green);flex-shrink:0;}
+
+/* ── Fault banner ── */
+.fault-banner{background:rgba(231,76,60,.15);border:2px solid var(--red);border-radius:var(--radius);
+  padding:16px 18px;margin-bottom:14px;color:var(--red);font-size:17px;display:none;line-height:1.6;}
+.fault-banner.visible{display:block;}
+
+/* ── Buttons ── */
+.btn-row{display:flex;gap:10px;margin-bottom:14px;}
+.btn{flex:1;padding:18px 12px;border:none;border-radius:var(--radius);font-family:var(--sans);
+  font-size:17px;font-weight:700;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.5px;}
+.btn:active{transform:scale(.96);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+.btn-secondary.active-range{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-sm{padding:12px 18px;font-size:15px;flex:unset;}
+
+/* ── Section title ── */
+.section-title{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  color:var(--text2);margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+/* ── Input groups ── */
+.input-group{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+.input-label{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:10px;}
+.input-row{display:flex;gap:10px;align-items:center;}
+
+/* Numpad-trigger tap fields */
+.np-field{
+  flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:20px;padding:12px 14px;
+  cursor:pointer;transition:border-color .2s;display:flex;align-items:center;
+  justify-content:space-between;min-height:52px;
+}
+.np-field:active{border-color:var(--accent);}
+.np-field-val{font-family:var(--mono);font-size:20px;color:var(--text);}
+.np-field-icon{font-size:18px;color:var(--accent);opacity:.6;}
+
+select{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:20px;padding:12px 14px;outline:none;transition:border-color .2s;}
+select:focus{border-color:var(--accent);}
+select option{background:var(--panel2);}
+
+/* ── Toggle rows ── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;margin-bottom:14px;}
+.toggle-label{font-size:18px;font-weight:600;}
+.toggle-sub{font-size:14px;color:var(--text2);margin-top:4px;}
+.switch{position:relative;width:60px;height:34px;flex-shrink:0;}
+.switch input{display:none;}
+.switch-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;
+  background:var(--panel2);border:1px solid var(--border);border-radius:17px;transition:.3s;}
+.switch-slider::before{content:'';position:absolute;height:26px;width:26px;left:3px;top:3px;
+  background:var(--text2);border-radius:50%;transition:.3s;}
+input:checked+.switch-slider{background:rgba(255,107,26,.2);border-color:var(--accent);}
+input:checked+.switch-slider::before{transform:translateX(26px);background:var(--accent);}
+
+/* ── PID grid ── */
+.pid-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+.pid-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 8px;text-align:center;}
+.pid-letter{font-family:var(--mono);font-size:24px;color:var(--accent);margin-bottom:6px;}
+.pid-val{font-family:var(--mono);font-size:16px;color:var(--text);}
+
+/* ── Zone table ── */
+.zone-table{width:100%;border-collapse:collapse;font-size:15px;margin-bottom:14px;}
+.zone-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text2);padding:8px 10px;border-bottom:1px solid var(--border);}
+.zone-table td{padding:14px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:14px;vertical-align:middle;}
+.zone-table tr:last-child td{border-bottom:none;}
+.zone-active{background:rgba(255,107,26,.08);}
+.zone-active td:first-child{border-left:4px solid var(--accent);}
+
+/* ── Autotune ── */
+.autotune-status{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;}
+.at-oscillation{display:flex;justify-content:center;gap:6px;margin:14px 0;}
+.at-bar{width:6px;border-radius:3px;background:var(--accent);animation:at-pulse 1s ease-in-out infinite;}
+.at-bar:nth-child(2){animation-delay:.15s;}.at-bar:nth-child(3){animation-delay:.3s;}
+.at-bar:nth-child(4){animation-delay:.45s;}.at-bar:nth-child(5){animation-delay:.6s;}
+@keyframes at-pulse{0%,100%{height:12px;opacity:.4}50%{height:36px;opacity:1}}
+.at-live-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;text-align:left;}
+.at-stat-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.at-stat-label{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:4px;}
+.at-stat-val{font-family:var(--mono);font-size:20px;color:var(--text);}
+.at-phase-text{font-size:16px;color:var(--accent);margin:8px 0;font-weight:600;}
+
+/* ── Program list ── */
+.prog-list{display:flex;flex-direction:column;gap:10px;}
+.prog-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .2s;}
+.prog-item:active{border-color:var(--accent);}
+.prog-item-info{flex:1;min-width:0;}
+.prog-item-name{font-weight:700;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prog-item-desc{font-size:15px;color:var(--text2);margin-top:4px;}
+.prog-item-meta{font-size:14px;color:var(--text2);font-family:var(--mono);white-space:nowrap;}
+
+/* ── Program detail ── */
+.prog-detail{display:none;}
+.prog-detail.active{display:block;}
+.prog-detail-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.back-btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-size:18px;padding:12px 18px;cursor:pointer;font-family:var(--sans);font-weight:600;flex-shrink:0;}
+.detail-prog-name{font-size:24px;font-weight:800;flex:1;}
+.seg-detail-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
+.seg-num-big{width:34px;height:34px;background:var(--accent);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;color:#fff;flex-shrink:0;}
+.seg-type-tag{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;border-radius:5px;}
+.seg-type-tag.ramp{background:rgba(255,107,26,.15);color:var(--accent);}
+.seg-type-tag.soak{background:rgba(77,166,255,.15);color:var(--blue);}
+.seg-detail-text{font-size:16px;color:var(--text);}
+
+/* ── Segment editor ── */
+.seg-list{display:flex;flex-direction:column;gap:10px;}
+.seg-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.seg-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.seg-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.seg-field label{display:block;font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+
+/* ── Toggle switch ── */
+.toggle-switch{position:relative;display:inline-block;width:56px;height:30px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#2a2d35;border-radius:30px;
+  border:1px solid var(--border);transition:.25s;}
+.toggle-slider:before{position:absolute;content:"";height:22px;width:22px;left:3px;bottom:3px;
+  background:#606878;border-radius:50%;transition:.25s;}
+.toggle-switch input:checked + .toggle-slider{background:#1a3a1a;border-color:var(--green);}
+.toggle-switch input:checked + .toggle-slider:before{background:var(--green);transform:translateX(26px);}
+.chart-outer{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;position:relative;}
+#chart-canvas{width:100%;display:block;touch-action:none;}
+.chart-toolbar{display:flex;align-items:center;gap:8px;padding:10px 12px 6px;}
+.chart-toolbar-right{margin-left:auto;display:flex;gap:8px;}
+.chart-xhair-bar{font-family:var(--mono);font-size:12px;color:var(--accent);
+  background:var(--panel2);border-top:1px solid var(--border);
+  padding:7px 12px;min-height:30px;letter-spacing:.3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chart-nav{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;}
+.chart-nav-btn{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:20px;font-weight:bold;
+  height:52px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:background .12s,border-color .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.chart-nav-btn:active{background:var(--border);border-color:var(--accent);}
+.chart-nav-btn.wide{grid-column:span 2;}
+.chart-session-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.chart-session-bar select{
+  flex:1;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:13px;padding:10px 12px;
+  -webkit-appearance:none;appearance:none;
+}
+.chart-session-del{
+  flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  color:var(--red);font-size:18px;width:48px;height:44px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.chart-session-new{
+  flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  color:var(--green);font-family:var(--mono);font-size:12px;padding:0 12px;height:44px;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.chart-stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 10px;text-align:center;}
+.chart-stat-label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);
+  font-family:var(--sans);margin-bottom:5px;}
+.chart-stat-val{font-family:var(--mono);font-size:22px;font-weight:bold;color:var(--text);line-height:1;}
+.chart-stat-val.temp-val{color:var(--accent);}
+.chart-stat-val.sp-val{color:var(--blue);}
+.chart-stat-val.out-val{color:var(--green);}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 24px;font-size:16px;z-index:9999;opacity:0;transition:all .3s;
+  pointer-events:none;white-space:nowrap;max-width:90vw;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:var(--green);color:var(--green);}
+.toast.error{border-color:var(--red);color:var(--red);}
+
+/* ── Numpad overlay ── */
+.numpad-overlay{display:none;position:fixed;inset:0;z-index:5000;
+  background:rgba(0,0,0,.85);align-items:center;justify-content:center;}
+.numpad-overlay.open{display:flex;}
+.numpad-box{background:var(--panel);border:2px solid var(--border);border-radius:20px;
+  padding:24px;width:min(420px,95vw);display:flex;flex-direction:column;gap:16px;}
+.numpad-title{font-size:17px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;text-align:center;}
+.numpad-display{font-family:var(--mono);font-size:60px;color:var(--accent);text-align:center;
+  background:var(--panel2);border-radius:12px;padding:16px;min-height:90px;
+  letter-spacing:2px;border:1px solid var(--border);}
+.numpad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.npkey{background:var(--panel2);border:1px solid var(--border);border-radius:12px;
+  padding:22px 10px;font-family:var(--mono);font-size:28px;font-weight:bold;
+  color:var(--text);cursor:pointer;text-align:center;transition:all .12s;}
+.npkey:active{background:var(--border);transform:scale(.94);}
+.npkey.back{font-size:22px;color:var(--text2);}
+.npkey.clear{color:var(--red);}
+.npkey.dot{font-size:24px;}
+.npkey.confirm{grid-column:span 2;background:var(--accent);color:#fff;font-size:22px;letter-spacing:2px;border-color:var(--accent);}
+.npkey.confirm:active{background:var(--accent2);}
+.npkey.cancel{color:var(--text2);font-size:20px;}
+
+/* ── QWERTY keyboard overlay ── */
+.kbd-overlay{display:none;position:fixed;inset:0;z-index:5100;
+  background:rgba(0,0,0,.88);align-items:flex-end;justify-content:center;}
+.kbd-overlay.open{display:flex;}
+.kbd-box{background:var(--panel);border:2px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;
+  padding:16px 12px 20px;width:100%;max-width:820px;display:flex;flex-direction:column;gap:10px;}
+.kbd-title{font-size:15px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;text-align:center;}
+.kbd-display{font-family:var(--mono);font-size:26px;color:var(--text);text-align:left;
+  background:var(--panel2);border-radius:10px;padding:12px 14px;min-height:52px;
+  border:1px solid var(--accent);word-break:break-all;}
+.kbd-row{display:flex;gap:6px;justify-content:center;}
+.kkey{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:0;height:48px;min-width:36px;flex:1;max-width:72px;
+  font-size:18px;font-weight:600;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .1s;user-select:none;}
+.kkey:active{background:var(--border);transform:scale(.93);}
+.kkey.wide{max-width:110px;font-size:15px;color:var(--text2);}
+.kkey.space{max-width:340px;flex:4;}
+.kkey.confirm-k{background:var(--accent);border-color:var(--accent);color:#fff;max-width:110px;font-size:15px;}
+.kkey.confirm-k:active{background:var(--accent2);}
+.kkey.back-k{font-size:20px;color:var(--text2);}
+
+/* ── Help overlay ── */
+.help-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+  border-radius:50%;background:var(--accent);color:#fff;font-size:15px;font-weight:bold;
+  cursor:pointer;flex-shrink:0;margin-left:8px;border:none;font-family:var(--sans);
+  transition:opacity .2s;vertical-align:middle;}
+.help-btn:active{opacity:.7;}
+.help-overlay{display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;}
+.help-overlay.open{display:flex;}
+.help-box{background:var(--panel);border:2px solid var(--accent);border-radius:16px;
+  padding:24px;width:min(380px,90vw);font-size:17px;line-height:1.7;color:var(--text);}
+.help-box-title{font-size:20px;font-weight:700;color:var(--accent);margin-bottom:12px;}
+.help-close{display:block;margin-top:18px;width:100%;background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:17px;padding:14px;cursor:pointer;}
+
+/* ── Utility ── */
+.text-muted{color:var(--text2);font-size:15px;}
+.mt-8{margin-top:8px;}.mt-12{margin-top:12px;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- Fixed header -->
+<div class="header">
+  <div class="logo" id="logo-text">⬡ STEELHAUS</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="sim-badge" id="sim-badge">SIM</div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-text">Connecting...</span>
+      <button class="help-btn" onclick="showHelp('live')">i</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fixed tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="dashboard">Dashboard</div>
+  <div class="tab" data-tab="programs">Programs</div>
+  <div class="tab" data-tab="pid">PID</div>
+  <div class="tab" data-tab="chart">Chart</div>
+  <div class="tab" data-tab="settings">Settings</div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="page active" id="page-dashboard">
+  <div class="fault-banner" id="fault-banner"></div>
+
+  <div class="temp-hero">
+    <div id="temp-display" class="temp-value cool">--.-<span class="temp-unit" id="temp-unit-label">°F</span></div>
+    <div class="temp-meta">
+      <div class="temp-stat"><div class="label">Setpoint</div><div class="val" id="sp-display">--</div></div>
+      <div class="temp-stat"><div class="label">Output</div><div class="val" id="out-display">--%</div></div>
+      <div class="temp-stat">
+        <div class="label">Cold Jxn <button class="help-btn" onclick="showHelp('cj')">i</button></div>
+        <div class="val" id="cj-display">--</div>
+      </div>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge-label">
+        <span>Heater Output <button class="help-btn" onclick="showHelp('output')">i</button></span>
+        <span id="gauge-pct">0%</span>
+      </div>
+      <div class="gauge-track"><div class="gauge-fill" id="output-gauge" style="width:0%"></div></div>
+      <div id="approach-phase-label" class="hidden" style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <div class="setpoint-row" onclick="openNumpad('setpoint','Manual Setpoint',currentSetpointDisplay(),false)">
+    <div>
+      <div class="setpoint-row-label">Manual Setpoint (<span class="unit-label">°F</span>)
+        <button class="help-btn" onclick="event.stopPropagation();showHelp('setpoint')">i</button>
+      </div>
+      <div class="setpoint-row-val" id="sp-tap-display">350°F</div>
+    </div>
+    <div class="setpoint-row-icon">⌨</div>
+  </div>
+
+  <button class="heater-btn start" id="heater-main-btn" onclick="toggleHeaterBtn()">▶ START</button>
+
+  <div class="status-row" id="contactor-row">
+    <div>
+      <div class="status-row-label">Contactor <button class="help-btn" onclick="showHelp('contactor')">i</button></div>
+      <div class="status-row-sub" id="contactor-state-text">De-energized — AC isolated</div>
+    </div>
+    <div class="status-dot" id="contactor-indicator"></div>
+  </div>
+
+  <div class="panel" id="active-zone-panel" style="margin-bottom:14px;">
+    <div class="section-title" style="margin-top:0;">Active PID Zone</div>
+    <div id="active-zone-content" style="color:var(--text2);font-size:14px;">No zones — run autotune in PID tab</div>
+  </div>
+
+  <div id="prog-status-bar" class="prog-bar hidden">
+  <div id="prog-running-content">
+    <div class="prog-name">
+      <span id="prog-name-display">—</span>
+      <span class="prog-state" id="prog-state-badge">idle</span>
+    </div>
+    <div style="margin-bottom:4px;">
+      <div class="gauge-label"><span style="color:var(--text2);font-size:13px;text-transform:uppercase;letter-spacing:.5px;">Overall</span><span id="prog-pct">0%</span></div>
+      <div class="gauge-track"><div class="gauge-fill cool" id="prog-gauge" style="width:0%"></div></div>
+    </div>
+    <div class="prog-steps" id="prog-steps-list"></div>
+    <div class="prog-time-row">Elapsed: <span id="prog-elapsed">—</span> min &nbsp;|&nbsp; Remaining: <span id="prog-remaining">—</span> min</div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="apiPost('/api/program/pause')">Pause</button>
+      <button class="btn btn-secondary" onclick="apiPost('/api/program/resume')">Resume</button>
+      <button class="btn btn-danger"    onclick="abortProgram()">Abort</button>
+    </div>
+  </div>
+    <div id="prog-aborted-msg" class="hidden" style="text-align:center;padding:16px 0 8px;">
+      <div style="font-size:20px;font-weight:700;color:var(--red);margin-bottom:14px;">⛔ Program Aborted</div>
+      <button class="btn btn-secondary" style="min-width:140px;" onclick="dismissAbort()">Close</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ PROGRAMS ══ -->
+<div class="page" id="page-programs">
+  <div id="prog-list-view">
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="showNewProgramForm()">+ New Program</button>
+    </div>
+    <div class="prog-list" id="prog-list">
+      <div class="text-muted" style="text-align:center;padding:24px;">Loading...</div>
+    </div>
+  </div>
+
+  <div class="prog-detail" id="prog-detail-view">
+    <div class="prog-detail-header">
+      <button class="back-btn" onclick="showProgList()">← Back</button>
+      <div class="detail-prog-name" id="detail-prog-name">—</div>
+    </div>
+    <div style="font-size:16px;color:var(--text2);margin-bottom:14px;" id="detail-prog-desc"></div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="runDetailProgram()">▶ Run Program</button>
+    </div>
+    <div id="detail-segs" style="margin-bottom:16px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="editDetailProgram()">✎ Edit</button>
+      <button class="btn btn-danger"    onclick="deleteDetailProgram()">✕ Delete</button>
+    </div>
+  </div>
+
+  <div id="prog-editor" class="hidden">
+    <div class="prog-detail-header">
+      <button class="back-btn" onclick="cancelEdit()">← Back</button>
+      <div class="detail-prog-name" id="edit-prog-title">New Program</div>
+    </div>
+    <div class="input-group">
+      <div class="input-label">Program Name</div>
+      <div class="np-field" onclick="openKeyboard('pe-name','Program Name',kbdValues['pe-name']||'')"
+        style="min-height:52px;border-radius:8px;">
+        <span id="pe-name-display" style="font-size:20px;flex:1;color:var(--text);">e.g. 1084 Harden</span>
+        <span class="np-field-icon">⌨</span>
+      </div>
+      <input type="hidden" id="pe-name" value="">
+    </div>
+    <div class="input-group">
+      <div class="input-label">Description</div>
+      <div class="np-field" onclick="openKeyboard('pe-desc','Description (optional)',kbdValues['pe-desc']||'')"
+        style="min-height:52px;border-radius:8px;">
+        <span id="pe-desc-display" style="font-size:18px;flex:1;color:var(--text2);">Optional notes</span>
+        <span class="np-field-icon">⌨</span>
+      </div>
+      <input type="hidden" id="pe-desc" value="">
+    </div>
+    <div class="section-title">Segments (<span class="unit-label">°F</span>)</div>
+    <div class="seg-list" id="pe-segs"></div>
+    <div class="btn-row mt-12">
+      <button class="btn btn-secondary" onclick="addSegment('ramp')">+ Ramp</button>
+      <button class="btn btn-secondary" onclick="addSegment('soak')">+ Soak</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary"   onclick="saveProgram()">Save Program</button>
+      <button class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PID ══ -->
+<div class="page" id="page-pid">
+  <div class="section-title">PID Zone Map</div>
+  <p style="font-size:15px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+    Each zone stores PID gains tuned at a specific temperature. The controller
+    interpolates between zones as the oven heats. Tune at temperatures you use
+    most — tempering (~350°F) and hardening (~1900°F) are good starting points.
+  </p>
+  <div id="zone-table-wrap">
+    <table class="zone-table">
+      <thead><tr><th>Zone Temp</th><th>Kp</th><th>Ki</th><th>Kd</th><th>Tuned</th><th></th></tr></thead>
+      <tbody id="zone-tbody"><tr><td colspan="6" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — run autotune below</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Run Autotune for a Zone</div>
+  <div class="autotune-status">
+    <div id="at-idle-ui">
+      <p style="font-size:15px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+        Autotune cycles the heater on and off, measures how your oven oscillates,
+        and calculates optimal PID gains. Start cold (under 100°F) for the first zone.
+      </p>
+      <div class="input-group">
+        <div class="input-label">Autotune Target (<span class="unit-label">°F</span>)</div>
+        <div class="np-field" onclick="openNumpad('at-target','Autotune Target',atSetpointDisplay(),false)">
+          <span class="np-field-val" id="at-setpoint-display">350°F</span>
+          <span class="np-field-icon">⌨</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">Tuning Rule</div>
+        <select id="at-method" onchange="updateAutotuneMethodInfo()">
+          <option value="steelhaus" selected>STEELHAUS</option>
+          <option value="ziegler-nichols">Ziegler-Nichols</option>
+          <option value="tyreus-luyben">Tyreus-Luyben</option>
+          <option value="some-overshoot">Some Overshoot</option>
+          <option value="no-overshoot">No Overshoot</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;font-size:20px;padding:20px;" onclick="startAutotune()">Start Autotune</button>
+      <div id="at-method-info" style="margin-top:10px;padding:12px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text2);line-height:1.6;font-family:var(--sans);"></div>
+    </div>
+
+    <div id="at-running-ui" class="hidden">
+      <div style="font-size:18px;font-weight:700;color:var(--accent);margin-bottom:6px;">Autotuning at <span id="at-running-setpoint">—</span></div>
+      <div class="at-phase-text" id="at-phase-text">Heating to setpoint...</div>
+      <div class="at-oscillation">
+        <div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div>
+      </div>
+      <div class="at-live-stats">
+        <div class="at-stat-card"><div class="at-stat-label">Current Temp</div><div class="at-stat-val" id="at-live-temp">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Output</div><div class="at-stat-val" id="at-live-output">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Cycles Done</div><div class="at-stat-val" id="at-live-cycles">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Elapsed</div><div class="at-stat-val" id="at-live-elapsed">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Peak High</div><div class="at-stat-val" id="at-live-peak-high">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Peak Low</div><div class="at-stat-val" id="at-live-peak-low">—</div></div>
+      </div>
+      <button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="abortAutotune()">Abort Autotune</button>
+    </div>
+
+    <div id="at-done-ui" class="hidden">
+      <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:14px;">✓ Autotune Complete — Zone at <span id="at-done-temp">—</span></div>
+      <div class="pid-grid" id="at-result-grid"></div>
+      <p style="font-size:14px;color:var(--text2);margin:12px 0;line-height:1.6;">Save this zone to the zone map. The controller will use these gains near <span id="at-done-temp2">—</span>.</p>
+      <div class="btn-row mt-8">
+        <button class="btn btn-primary"   onclick="applyAutotune()">Save Zone</button>
+        <button class="btn btn-secondary" onclick="resetAutotuneUI()">Discard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Ramp Rate Autotune</div>
+  <div class="autotune-status">
+    <div id="rat-idle-ui">
+      <p style="font-size:15px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+        Measures how fast your oven heats at a fixed output, then calculates
+        gains for the ramp rate controller. Run once per temperature range.
+        The oven stabilizes at the target temp, then a step output is held for
+        <span id="rat-dur-display">6</span> minutes while the heating rate is measured.
+      </p>
+      <div class="input-group">
+        <div class="input-label">Stabilize At (<span class="unit-label">°F</span>)</div>
+        <div class="np-field" onclick="openNumpad('rat-temp','Stabilize Temperature',ratTempDisplay(),false)">
+          <span class="np-field-val" id="rat-temp-display">350°F</span>
+          <span class="np-field-icon">⌨</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">Step Output (%)</div>
+        <div class="np-field" onclick="openNumpad('rat-output','Step Output (%)',ratOutputDisplay(),true)">
+          <span class="np-field-val" id="rat-output-display">50%</span>
+          <span class="np-field-icon">⌨</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">Step Duration (min)</div>
+        <div class="np-field" onclick="openNumpad('rat-duration','Step Duration (minutes)',ratDurDisplay(),true)">
+          <span class="np-field-val" id="rat-duration-display">6 min</span>
+          <span class="np-field-icon">⌨</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;font-size:20px;padding:20px;" onclick="startRampAutotune()">Start Ramp Autotune</button>
+    </div>
+
+    <div id="rat-running-ui" class="hidden">
+      <div style="font-size:18px;font-weight:700;color:var(--accent);margin-bottom:6px;">Ramp Autotune Running</div>
+      <div class="at-phase-text" id="rat-phase-text">Stabilizing...</div>
+      <div class="at-oscillation">
+        <div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div><div class="at-bar"></div>
+      </div>
+      <div class="at-live-stats">
+        <div class="at-stat-card"><div class="at-stat-label">Current Temp</div><div class="at-stat-val" id="rat-live-temp">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Phase</div><div class="at-stat-val" id="rat-live-phase">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Step Elapsed</div><div class="at-stat-val" id="rat-live-elapsed">—</div></div>
+        <div class="at-stat-card"><div class="at-stat-label">Output</div><div class="at-stat-val" id="rat-live-output">—</div></div>
+      </div>
+      <button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="abortRampAutotune()">Abort</button>
+    </div>
+
+    <div id="rat-done-ui" class="hidden">
+      <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:14px;">✓ Ramp Autotune Complete — Zone at <span id="rat-done-temp">—</span></div>
+      <div class="at-live-stats" id="rat-result-stats"></div>
+      <p style="font-size:14px;color:var(--text2);margin:12px 0;line-height:1.6;">
+        Save this zone. The ramp rate controller will use these gains during program ramp segments.
+        Run at multiple temperatures for best accuracy across the full range.
+      </p>
+      <div class="btn-row mt-8">
+        <button class="btn btn-primary"   onclick="applyRampAutotune()">Save Zone</button>
+        <button class="btn btn-secondary" onclick="resetRampAutotuneUI()">Discard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Ramp Tune Zones</div>
+  <div style="overflow-x:auto;margin-bottom:14px;">
+    <table class="zone-table" id="rat-zone-table">
+      <thead><tr>
+        <th>Temp</th><th>Kp</th><th>Ki</th><th>K (°/min/%)</th><th>Lag (s)</th><th>Hold %</th><th></th>
+      </tr></thead>
+      <tbody id="rat-zone-tbody">
+        <tr><td colspan="6" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — run ramp autotune below</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Thermal Model</div>
+  <p style="font-size:14px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+    Continuously refined from real runs. Every time the oven holds a temperature steadily,
+    the measured output is recorded here. Used to seed the PID when transitioning from
+    a ramp to a soak.
+  </p>
+  <div style="overflow-x:auto;margin-bottom:8px;">
+    <table class="zone-table" id="thermal-model-table">
+      <thead><tr>
+        <th>Temp</th><th>Hold %</th><th>Samples</th><th>Last Updated</th>
+      </tr></thead>
+      <tbody id="thermal-model-tbody">
+        <tr><td colspan="4" style="color:var(--text2);text-align:center;padding:20px;">
+          No data yet — holds a temperature to build the model
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="btn-row" style="margin-bottom:20px;">
+    <button class="btn btn-secondary btn-sm" onclick="loadThermalModel()">↻ Refresh</button>
+    <button class="btn btn-danger btn-sm" onclick="clearThermalModel()">Clear Model</button>
+  </div>
+
+  <div class="section-title">Manual PID Override</div>
+  <p style="font-size:14px;color:var(--text2);margin-bottom:12px;">Temporarily override PID gains. Not saved as a zone.</p>
+  <div class="pid-grid">
+    <div class="pid-card">
+      <div class="pid-letter">Kp</div>
+      <div class="np-field" style="margin-top:8px;justify-content:center;" onclick="openNumpad('pid-kp','Kp Gain','',true)">
+        <span class="np-field-val" id="kp-display">—</span>
+      </div>
+    </div>
+    <div class="pid-card">
+      <div class="pid-letter">Ki</div>
+      <div class="np-field" style="margin-top:8px;justify-content:center;" onclick="openNumpad('pid-ki','Ki Gain','',true)">
+        <span class="np-field-val" id="ki-display">—</span>
+      </div>
+    </div>
+    <div class="pid-card">
+      <div class="pid-letter">Kd</div>
+      <div class="np-field" style="margin-top:8px;justify-content:center;" onclick="openNumpad('pid-kd','Kd Gain','',true)">
+        <span class="np-field-val" id="kd-display">—</span>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-secondary" style="width:100%;" onclick="savePID()">Apply Manual Override</button>
+</div>
+
+<!-- ══ CHART ══ -->
+<div class="page" id="page-chart">
+
+  <!-- Session picker -->
+  <div class="chart-session-bar">
+    <select id="chart-session-select" onchange="chartOnSessionChange()">
+      <option value="current">● Current Session</option>
+    </select>
+    <div class="chart-session-new" ontouchstart="event.preventDefault();chartNewSession()" onclick="chartNewSession()">＋ NEW</div>
+    <div class="chart-session-del" id="chart-session-del-btn" ontouchstart="event.preventDefault();chartDeleteSession()" onclick="chartDeleteSession()" style="display:none;">🗑</div>
+    <div class="chart-session-new" style="background:var(--panel2);color:var(--text2);border:1px solid var(--border);" ontouchstart="event.preventDefault();openSessionManager()" onclick="openSessionManager()">⚙ MANAGE</div>
+  </div>
+
+  <!-- Session manager panel -->
+  <div id="session-manager" class="hidden" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:16px;font-weight:700;color:var(--text);">Session Manager</div>
+      <button class="btn btn-secondary btn-sm" onclick="closeSessionManager()">✕ Close</button>
+    </div>
+    <div id="session-stats" style="font-size:14px;color:var(--text2);margin-bottom:14px;font-family:var(--mono);"></div>
+
+    <!-- Purge by age -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;">Auto-purge by age</div>
+        <div style="font-size:13px;color:var(--text2);">Delete all sessions older than N days</div>
+      </div>
+      <div class="np-field" style="min-width:110px;max-width:140px;" onclick="openNumpad('sm-purge-days','Delete sessions older than (days)',smPurgeDays,false)">
+        <span class="np-field-val" id="sm-purge-days-display">90 days</span>
+        <span class="np-field-icon">⌨</span>
+      </div>
+      <button class="btn btn-danger btn-sm" style="white-space:nowrap;" onclick="smPurgeByAge()">Delete Old</button>
+    </div>
+
+    <!-- Batch select and delete -->
+    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">Select sessions to delete:</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" onclick="smSelectAll()">Select All</button>
+      <button class="btn btn-secondary btn-sm" onclick="smSelectNone()">Select None</button>
+      <button class="btn btn-secondary btn-sm" onclick="smSelectOlderThan(30)">Older than 30d</button>
+      <button class="btn btn-secondary btn-sm" onclick="smSelectOlderThan(90)">Older than 90d</button>
+    </div>
+    <div id="sm-session-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div id="sm-selected-count" style="font-size:14px;color:var(--text2);font-family:var(--mono);">0 selected</div>
+      <button class="btn btn-danger" id="sm-delete-btn" onclick="smDeleteSelected()" disabled style="min-width:160px;">Delete Selected</button>
+    </div>
+  </div>
+
+  <!-- Chart canvas card -->
+  <div class="chart-outer">
+    <div class="chart-toolbar">
+      <span style="font-size:13px;color:var(--text2);font-family:var(--mono);">
+        <span style="color:var(--accent);">━</span> Temp &nbsp;
+        <span style="color:var(--blue);">━</span> Door open &nbsp;
+        <span style="color:var(--blue);">╌ </span>Setpoint
+      </span>
+      <div class="chart-toolbar-right">
+        <button class="btn btn-secondary btn-sm" ontouchstart="event.preventDefault();chartClearCrosshair()" onclick="chartClearCrosshair()">✕</button>
+        <button class="btn btn-secondary btn-sm" id="chart-btn-live"   ontouchstart="event.preventDefault();chartSetMode('live')"   onclick="chartSetMode('live')">● LIVE</button>
+        <button class="btn btn-secondary btn-sm" id="chart-btn-review" ontouchstart="event.preventDefault();chartSetMode('review')" onclick="chartSetMode('review')">⊙ REVIEW</button>
+        <button class="btn btn-secondary btn-sm" id="chart-btn-fit"    ontouchstart="event.preventDefault();chartSetMode('fit')"    onclick="chartSetMode('fit')">⊡ FIT</button>
+      </div>
+    </div>
+    <canvas id="chart-canvas"></canvas>
+    <div class="chart-xhair-bar" id="chart-xhair-info">TAP CHART TO READ VALUES</div>
+  </div>
+
+  <!-- Navigation buttons -->
+  <!-- Row 1: horizontal pan + X zoom -->
+  <div class="chart-nav">
+    <div class="chart-nav-btn" ontouchstart="chartPanStep(-0.4)"  onclick="chartPanStep(-0.4)">◀◀</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanStep(-0.15)" onclick="chartPanStep(-0.15)">◀</div>
+    <div class="chart-nav-btn" ontouchstart="chartZoomX(0.6)"    onclick="chartZoomX(0.6)">＋</div>
+    <div class="chart-nav-btn" ontouchstart="chartZoomX(1.65)"   onclick="chartZoomX(1.65)">－</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanStep(0.15)"  onclick="chartPanStep(0.15)">▶</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanStep(0.4)"   onclick="chartPanStep(0.4)">▶▶</div>
+  </div>
+  <!-- Row 2: vertical pan + Y zoom -->
+  <div class="chart-nav" style="padding-top:0;">
+    <div class="chart-nav-btn" ontouchstart="chartPanY(0.4)"   onclick="chartPanY(0.4)">▲▲</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanY(0.15)"  onclick="chartPanY(0.15)">▲</div>
+    <div class="chart-nav-btn" ontouchstart="chartZoomY(0.6)"  onclick="chartZoomY(0.6)">↕＋</div>
+    <div class="chart-nav-btn" ontouchstart="chartZoomY(1.65)" onclick="chartZoomY(1.65)">↕－</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanY(-0.15)" onclick="chartPanY(-0.15)">▼</div>
+    <div class="chart-nav-btn" ontouchstart="chartPanY(-0.4)"  onclick="chartPanY(-0.4)">▼▼</div>
+  </div>
+
+  <!-- Live status bar -->
+  <div class="chart-status-bar">
+    <div class="chart-stat">
+      <div class="chart-stat-label">Temperature</div>
+      <div class="chart-stat-val temp-val" id="cstat-temp">—</div>
+    </div>
+    <div class="chart-stat">
+      <div class="chart-stat-label">Setpoint</div>
+      <div class="chart-stat-val sp-val" id="cstat-sp">—</div>
+    </div>
+    <div class="chart-stat">
+      <div class="chart-stat-label">Output</div>
+      <div class="chart-stat-val out-val" id="cstat-out">—</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ SETTINGS ══ -->
+<div class="page" id="page-settings">
+  <div class="section-title">Approach Control Zones</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <p style="font-size:14px;color:var(--text2);margin:0;line-height:1.6;flex:1;">
+      Defines how the oven approaches each setpoint. Runs full power, ramps down, then cruises at a fixed output before handing off to PID. Without approach zones, PID engages immediately from a cold start.
+    </p>
+    <label class="toggle-switch" style="margin-left:16px;flex-shrink:0;">
+      <input type="checkbox" id="toggle-approach" onchange="saveFeatureToggle('approach_control_enabled', this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div id="approach-zone-table-wrap">
+    <table class="zone-table">
+      <thead><tr>
+        <th>Setpoint</th>
+        <th>Full Pwr Until</th>
+        <th>Cruise Start</th>
+        <th>Cruise %</th>
+        <th>PID Start</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="approach-zone-tbody">
+        <tr><td colspan="6" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — add one below</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-secondary" style="width:100%;margin-bottom:24px;" onclick="startAddApproachZone()">+ Add Approach Zone</button>
+
+  <div class="section-title">Door Recovery Zones</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <p style="font-size:14px;color:var(--text2);margin:0;line-height:1.6;flex:1;">
+      After the door closes, boosts output to recover lost heat then tapers back to PID. Without recovery zones, the PID integral is reset on door close and PID resumes immediately.
+    </p>
+    <label class="toggle-switch" style="margin-left:16px;flex-shrink:0;">
+      <input type="checkbox" id="toggle-door-recovery" onchange="saveFeatureToggle('door_recovery_enabled', this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div id="door-recovery-zone-table-wrap">
+    <table class="zone-table">
+      <thead><tr>
+        <th>Setpoint</th>
+        <th>Boost %</th>
+        <th>Resume within</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="door-recovery-zone-tbody">
+        <tr><td colspan="5" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — add one below</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-secondary" style="width:100%;margin-bottom:24px;" onclick="startAddDoorRecoveryZone()">+ Add Door Recovery Zone</button>
+  <div class="input-group">
+    <div class="input-label">Display Unit</div>
+    <select id="unit-select" onchange="onUnitChange()">
+      <option value="F">Fahrenheit (°F)</option>
+      <option value="C">Celsius (°C)</option>
+    </select>
+    <button class="btn btn-secondary btn-sm mt-8" onclick="saveSettings()">Save</button>
+  </div>
+
+  <div class="section-title">Maximum Temperature Limit</div>
+  <div class="input-group">
+    <div class="input-label">Hard Safety Cutoff (<span class="unit-label">°F</span>)</div>
+    <div class="np-field" onclick="openNumpad('max-temp','Max Temperature Limit',maxTempDisplay(),false)">
+      <span class="np-field-val" id="max-temp-display">2200°F</span>
+      <span class="np-field-icon">⌨</span>
+    </div>
+    <div style="font-size:14px;color:var(--text2);margin-top:10px;line-height:1.6;">If temperature exceeds this value, all power cuts immediately.</div>
+    <button class="btn btn-secondary btn-sm mt-8" onclick="saveSettings()">Save</button>
+  </div>
+
+  <div class="section-title">Autotune Power Settings</div>
+  <div class="input-group">
+    <div class="input-label">Preheat Cruise Multiplier (default 1.0)</div>
+    <div class="np-field" onclick="openNumpad('cruise-mult','Preheat Cruise Multiplier',cruiseMultDisplay(),true)">
+      <span class="np-field-val" id="cruise-mult-display">1.0×</span>
+      <span class="np-field-icon">⌨</span>
+    </div>
+    <div style="font-size:14px;color:var(--text2);margin-top:10px;line-height:1.6;">
+      Scales the output % used during the preheat cruise phase — the steady climb to setpoint before relay oscillation starts.
+      If your oven stalls or climbs too slowly during autotune preheat, increase this.
+      Try 1.5 or 2.0 for underpowered ovens. Has no effect on the relay oscillation phase.
+    </div>
+  </div>
+  <div class="input-group" style="margin-top:14px;">
+    <div class="input-label">Relay High Multiplier (default 1.0)</div>
+    <div class="np-field" onclick="openNumpad('relay-mult','Relay High Multiplier',relayMultDisplay(),true)">
+      <span class="np-field-val" id="relay-mult-display">1.0×</span>
+      <span class="np-field-icon">⌨</span>
+    </div>
+    <div style="font-size:14px;color:var(--text2);margin-top:10px;line-height:1.6;">
+      Scales the output % used during the relay oscillation phase of autotune — the bang-bang cycling that measures your oven's response.
+      If the oven can't swing above setpoint during autotune, increase this.
+      Too high causes large temperature swings and less accurate results. Try 1.5 for weak ovens.
+    </div>
+    <button class="btn btn-secondary btn-sm mt-8" id="at-mult-save-btn"
+      onclick="saveAutotuneMultipliers()" style="transition:background .2s,border-color .2s,color .2s;">Save</button>
+  </div>
+
+  <div class="section-title">Temperature Calibration</div>
+  <div class="input-group">
+    <div class="input-label">Offset (<span class="unit-label">°F</span>) — add or subtract from all readings</div>
+    <div class="np-field" onclick="openNumpad('temp-offset','Temperature Offset',tempOffsetDisplay(),true,true)">
+      <span class="np-field-val" id="temp-offset-display">0.0°F</span>
+      <span class="np-field-icon">⌨</span>
+    </div>
+    <div style="font-size:14px;color:var(--text2);margin-top:10px;line-height:1.6;">Boiling water = 212°F. If reading 213.6°F, set offset to -1.6°F.</div>
+    <button class="btn btn-secondary btn-sm mt-8" onclick="saveTempOffset()">Save</button>
+  </div>
+
+  <div class="section-title">Simulation Mode</div>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Simulation Mode <button class="help-btn" onclick="showHelp('sim')">i</button></div>
+      <div class="toggle-sub">Simulate oven without real hardware</div>
+    </div>
+    <label class="switch"><input type="checkbox" id="sim-toggle" onchange="onSimToggle(this.checked)"><span class="switch-slider"></span></label>
+  </div>
+  <div id="sim-warning" class="hidden" style="background:rgba(243,156,18,.15);border:1px solid var(--yellow);border-radius:var(--radius);padding:14px;margin-bottom:14px;font-size:15px;color:var(--yellow);line-height:1.6;">
+    ⚠️ Simulation mode is ON. No real hardware is being controlled. Turn OFF before using a real oven.
+  </div>
+
+  <div class="section-title">Help Buttons</div>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Show Help Buttons</div>
+      <div class="toggle-sub">Orange ⓘ buttons explaining each control</div>
+    </div>
+    <label class="switch"><input type="checkbox" id="help-toggle" onchange="onHelpToggle(this.checked)" checked><span class="switch-slider"></span></label>
+  </div>
+
+  <div class="section-title">Remote Access — Tailscale</div>
+  <div class="input-group" style="font-size:15px;line-height:1.9;color:var(--text2);">
+    Tailscale is always running on this Pi. To connect your phone:<br><br>
+    1. Install <strong style="color:var(--text);">Tailscale</strong> on your iPhone (App Store, free)<br>
+    2. Sign in with your Tailscale account<br>
+    3. Tap the power button in the Tailscale app to connect<br>
+    4. Find <strong style="color:var(--text);">kiln</strong> in your device list<br>
+    5. Open: <code style="background:var(--panel2);padding:4px 10px;border-radius:6px;font-size:14px;color:var(--accent);">http://[kiln-tailscale-ip]:5000</code>
+  </div>
+
+  <div class="section-title">System</div>
+  <div class="input-group">
+    <div class="input-label" style="margin-bottom:10px;">Safely power down the Raspberry Pi before unplugging.</div>
+    <button class="btn btn-danger" style="width:100%;" onclick="confirmShutdown()">⏻ Shutdown</button>
+  </div>
+
+  <div class="section-title">About</div>
+  <div class="input-group" style="font-size:15px;color:var(--text2);line-height:2;">
+    <div>Controller: Raspberry Pi 4</div>
+    <div>Sensor Bridge: ESP32 WROOM-32</div>
+    <div>Thermocouple: MAX31856 + K-Type</div>
+    <div>SSRs: × 2 (240V, both hot legs)</div>
+    <div>Contactor: Master AC disconnect, 24V coil</div>
+  </div>
+</div>
+
+
+<!-- Fixed E-Stop bar -->
+
+
+<!-- Numpad overlay -->
+<div class="numpad-overlay" id="numpad-overlay">
+  <div class="numpad-box">
+    <div class="numpad-title" id="numpad-title">Enter Value</div>
+    <div class="numpad-display" id="numpad-display">—</div>
+    <div class="numpad-grid">
+      <div class="npkey" onclick="npKey('7')">7</div>
+      <div class="npkey" onclick="npKey('8')">8</div>
+      <div class="npkey" onclick="npKey('9')">9</div>
+      <div class="npkey" onclick="npKey('4')">4</div>
+      <div class="npkey" onclick="npKey('5')">5</div>
+      <div class="npkey" onclick="npKey('6')">6</div>
+      <div class="npkey" onclick="npKey('1')">1</div>
+      <div class="npkey" onclick="npKey('2')">2</div>
+      <div class="npkey" onclick="npKey('3')">3</div>
+      <div class="npkey dot"   onclick="npKey('.')">.</div>
+      <div class="npkey" onclick="npKey('0')">0</div>
+      <div class="npkey back"  onclick="npKey('back')">⌫</div>
+      <div class="npkey clear" onclick="npKey('clear')">C</div>
+      <div class="npkey confirm" onclick="npConfirm()">SET ✓</div>
+      <div class="npkey cancel"  onclick="npCancel()">CANCEL</div>
+      <div class="npkey neg hidden" id="npkey-neg" onclick="npKey('neg')" style="grid-column:span 3;">+/−</div>
+    </div>
+  </div>
+</div>
+
+<!-- QWERTY keyboard overlay -->
+<div class="kbd-overlay" id="kbd-overlay">
+  <div class="kbd-box">
+    <div class="kbd-title" id="kbd-title">Enter Text</div>
+    <div class="kbd-display" id="kbd-display"></div>
+    <div class="kbd-row">
+      <div class="kkey" onclick="kKey('q')">q</div><div class="kkey" onclick="kKey('w')">w</div>
+      <div class="kkey" onclick="kKey('e')">e</div><div class="kkey" onclick="kKey('r')">r</div>
+      <div class="kkey" onclick="kKey('t')">t</div><div class="kkey" onclick="kKey('y')">y</div>
+      <div class="kkey" onclick="kKey('u')">u</div><div class="kkey" onclick="kKey('i')">i</div>
+      <div class="kkey" onclick="kKey('o')">o</div><div class="kkey" onclick="kKey('p')">p</div>
+    </div>
+    <div class="kbd-row">
+      <div class="kkey" onclick="kKey('a')">a</div><div class="kkey" onclick="kKey('s')">s</div>
+      <div class="kkey" onclick="kKey('d')">d</div><div class="kkey" onclick="kKey('f')">f</div>
+      <div class="kkey" onclick="kKey('g')">g</div><div class="kkey" onclick="kKey('h')">h</div>
+      <div class="kkey" onclick="kKey('j')">j</div><div class="kkey" onclick="kKey('k')">k</div>
+      <div class="kkey" onclick="kKey('l')">l</div>
+    </div>
+    <div class="kbd-row">
+      <div class="kkey wide" onclick="kShift()">⇧ SHIFT</div>
+      <div class="kkey" onclick="kKey('z')">z</div><div class="kkey" onclick="kKey('x')">x</div>
+      <div class="kkey" onclick="kKey('c')">c</div><div class="kkey" onclick="kKey('v')">v</div>
+      <div class="kkey" onclick="kKey('b')">b</div><div class="kkey" onclick="kKey('n')">n</div>
+      <div class="kkey" onclick="kKey('m')">m</div>
+      <div class="kkey back-k wide" onclick="kKey('back')">⌫</div>
+    </div>
+    <div class="kbd-row">
+      <div class="kkey wide" onclick="kNumMode()">123</div>
+      <div class="kkey" onclick="kKey('-')">-</div>
+      <div class="kkey space" onclick="kKey(' ')">SPACE</div>
+      <div class="kkey" onclick="kKey('.')">.</div>
+      <div class="kkey confirm-k wide" onclick="kConfirm()">DONE ✓</div>
+    </div>
+    <!-- Number row (shown when 123 toggled) -->
+    <div class="kbd-row hidden" id="kbd-numrow">
+      <div class="kkey" onclick="kKey('1')">1</div><div class="kkey" onclick="kKey('2')">2</div>
+      <div class="kkey" onclick="kKey('3')">3</div><div class="kkey" onclick="kKey('4')">4</div>
+      <div class="kkey" onclick="kKey('5')">5</div><div class="kkey" onclick="kKey('6')">6</div>
+      <div class="kkey" onclick="kKey('7')">7</div><div class="kkey" onclick="kKey('8')">8</div>
+      <div class="kkey" onclick="kKey('9')">9</div><div class="kkey" onclick="kKey('0')">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- Help overlay -->
+<div class="help-overlay" id="help-overlay" onclick="closeHelp()">
+  <div class="help-box" onclick="event.stopPropagation()">
+    <div class="help-box-title" id="help-title"></div>
+    <div id="help-body"></div>
+    <button class="help-close" onclick="closeHelp()">Got it</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const API = window.location.origin;
+let displayUnit      = 'F';
+let lastStatus       = {};
+let progAbortDismissed = false;
+let lastZones        = [];
+let heaterOn = false;
+let simMode          = false;
+let showHelpBtns     = true;
+let currentSetpointC = 177;   // 350F
+let maxTempF         = 2200;
+let atSetpointC      = 176.667;
+let pidVals          = {kp:'', ki:'', kd:''};
+
+// Numpad
+let numpadTarget   = null;
+let numpadBuffer   = '';
+let numpadAllowDot = false;
+let numpadAllowNeg = false;
+let numpadFresh    = false;   // true after openNumpad — first digit auto-clears prefill
+
+// QWERTY keyboard
+let kbdTarget  = null;
+let kbdBuffer  = '';
+let kbdShift   = false;
+let kbdNumMode = false;
+const kbdValues = {};   // stores text field values by id
+
+// Programs
+let detailProgId  = null;
+let editProgramId = null;
+let editSegments  = [];
+let activeProgSegments = [];  // cached segment list for dashboard step display
+
+// Autotune
+let autotuneStartTime = null;
+let autotuneApplied   = false;  // Set after saving zone — prevents done panel re-appearing
+
+// Ramp autotune state
+let ratTempC      = 177;    // stabilize setpoint °C (default 350°F)
+let ratOutput     = 50;     // step output %
+let ratDurMin     = 6;      // step duration minutes
+let ratApplied    = false;
+let smPurgeDays   = 90;     // session manager purge threshold
+
+// Simulation
+let simTemp      = 20;
+let simSetpoint  = 177;
+let simAutotuning = false;
+let simAutotuneResult = null;
+let simAtTargetC = 177;
+let simAtOutput  = 0;
+let simAtHigh    = null;
+let simAtLow     = null;
+let simAtCycles  = 0;
+let simAtPhase   = 'high';
+let simInterval  = null;
+let simLog       = [];   // {ts, temp, setpoint}
+let simProgram   = null;
+let simPaused    = false; // currently running program in sim
+let simProgSegIdx = 0;   // current segment index
+let simProgSegStart = 0; // sim time (seconds) when segment started
+let simProgStartTemp = 20; // temp at start of current segment
+let simProgElapsed = 0;  // total sim seconds elapsed
+
+// Chart
+let chartRefreshTimer = null;
+let chartAllLogs = [];       // full dataset fetched from server
+let chartView = {            // current viewport in data-space
+  xMin: 0, xMax: 0,         // unix timestamps (seconds)
+  yMin: 0, yMax: 0          // display-unit temps
+};
+// chartMode: 'live' | 'review' | 'fit'
+// live   — view tracks newest data; zoom/pan anchor to current temp
+// review — view is free; data still updates in background
+// fit    — view recalculates to show all data on every refresh
+let chartMode = 'live';
+let chartMouseX = null;      // for crosshair
+let chartMouseY = null;
+let chartInitialized = false;
+let chartViewingSessionId = null;   // null = current session
+let chartSessions = [];             // cached list from /api/sessions
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function cToDisplay(c){ return displayUnit==='F'?((c*9/5)+32).toFixed(1):parseFloat(c).toFixed(1); }
+function displayToC(v){ return displayUnit==='F'?(parseFloat(v)-32)*5/9:parseFloat(v); }
+function unitSuffix(){ return displayUnit==='F'?'°F':'°C'; }
+function currentSetpointDisplay(){ return cToDisplay(currentSetpointC); }
+function atSetpointDisplay(){ return cToDisplay(atSetpointC); }
+function maxTempDisplay(){ return displayUnit==='F'?maxTempF.toFixed(0):Math.round((maxTempF-32)*5/9)+''; }
+
+async function apiPost(url,body={}){
+  if(simMode&&!url.startsWith('/api/settings')&&!url.startsWith('/api/sim')&&!(url.startsWith('/api/programs')&&!url.endsWith('/start'))){
+    return handleSimPost(url,body);
+  }
+  try{
+    const res=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(!data.ok&&data.error) showToast(data.error,'error');
+    return data;
+  }catch(e){showToast('Connection error','error');return null;}
+}
+async function apiGet(url){
+  try{return await(await fetch(API+url)).json();}catch(e){return null;}
+}
+
+// ── Simulation ────────────────────────────────────────────────────────────────
+function handleSimPost(url,body){
+  if(url==='/api/control/enable'){heaterOn=body.enable;updateHeaterBtn();setContactor(heaterOn,true);return{ok:true};}
+  if(url==='/api/control/setpoint'){simSetpoint=body.temp_c;currentSetpointC=body.temp_c;return{ok:true};}
+  if(url==='/api/control/estop'){heaterOn=false;simAutotuning=false;updateHeaterBtn();setContactor(false,true);return{ok:true};}
+  if(url==='/api/control/reset_estop') return{ok:true};
+  if(url==='/api/program/pause'){simPaused=true;return{ok:true};}
+  if(url==='/api/program/resume'){simPaused=false;return{ok:true};}
+  if(url==='/api/program/abort'){heaterOn=false;updateHeaterBtn();setContactor(false,true);simProgram=null;simPaused=false;progAbortDismissed=false;document.getElementById('prog-aborted-msg').classList.remove('hidden');document.getElementById('prog-running-content').classList.add('hidden');return{ok:true};}
+  if(url.match(/^\/api\/programs\/\d+\/start$/)){
+    const progId=parseInt(url.split('/')[3]);
+    return fetch(API+'/api/programs/'+progId).then(r=>r.json()).then(prog=>{
+      if(!prog||!prog.segments||!prog.segments.length) return{ok:false,error:'No segments'};
+      simProgram=prog;
+      activeProgSegments=prog.segments;
+      simProgSegIdx=0;
+      simProgSegStart=simProgElapsed;
+      simProgStartTemp=simTemp;
+      heaterOn=true;
+      updateHeaterBtn();
+      setContactor(true,true);
+      // Set initial setpoint
+      simUpdateProgSetpoint();
+      return{ok:true};
+    }).catch(()=>({ok:false,error:'Failed to load program'}));
+  }
+  if(url==='/api/autotune/apply'){
+    if(simAutotuneResult){
+      const {kp,ki,kd,temp_c}=simAutotuneResult;
+      return fetch(API+'/api/pid/zones',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({center_temp_c:temp_c,kp,ki,kd})})
+        .then(r=>r.json())
+        .then(d=>{simAutotuneResult=null;return d;})
+        .catch(()=>({ok:false,error:'Failed to save zone'}));
+    }
+    return{ok:false,error:'No autotune result to save'};
+  }
+  return{ok:true};
+}
+
+let _lastContactorCmd=null;
+function setContactor(on,sendCmd=false){
+  const ind=document.getElementById('contactor-indicator');
+  const txt=document.getElementById('contactor-state-text');
+  const row=document.getElementById('contactor-row');
+  if(on){ind.classList.add('on');txt.textContent='Energized — AC live at SSRs';row.style.opacity='1';}
+  else{ind.classList.remove('on');txt.textContent='De-energized — AC isolated';row.style.opacity='0.7';}
+  if(sendCmd && on!==_lastContactorCmd){_lastContactorCmd=on;apiPost('/api/control/contactor',{on:on});}
+}
+
+function simUpdateProgSetpoint(){
+  if(!simProgram) return;
+  const seg=simProgram.segments[simProgSegIdx];
+  if(!seg) return;
+  const elapsed=simProgElapsed-simProgSegStart;
+  if(seg.type==='ramp'){
+    // Advance setpoint along ramp at rate_per_min (°C/min)
+    const rampTarget=seg.target_temp;
+    const rampRate=Math.abs(seg.rate_per_min)||5;
+    const direction=rampTarget>=simProgStartTemp?1:-1;
+    const newSp=simProgStartTemp+(direction*rampRate*(elapsed/60));
+    if(direction>0) simSetpoint=Math.min(newSp,rampTarget);
+    else simSetpoint=Math.max(newSp,rampTarget);
+    currentSetpointC=simSetpoint;
+    // Advance segment when ramp target reached
+    if((direction>0&&simSetpoint>=rampTarget)||(direction<0&&simSetpoint<=rampTarget)){
+      simProgSegIdx++;
+      simProgSegStart=simProgElapsed;
+      simProgStartTemp=simSetpoint;
+      if(simProgSegIdx>=simProgram.segments.length){
+        // Program complete
+        simProgram=null;
+        heaterOn=false;updateHeaterBtn();setContactor(false,true);
+        showToast('Program complete!','success');
+      }
+    }
+  } else {
+    // Soak — hold at target_temp for duration_min. -1 = continuous (never auto-advance).
+    simSetpoint=seg.target_temp;
+    currentSetpointC=simSetpoint;
+    if(seg.duration_min !== -1 && elapsed/60>=seg.duration_min){
+      simProgSegIdx++;
+      simProgSegStart=simProgElapsed;
+      simProgStartTemp=simSetpoint;
+      if(simProgSegIdx>=simProgram.segments.length){
+        simProgram=null;
+        heaterOn=false;updateHeaterBtn();setContactor(false,true);
+        showToast('Program complete!','success');
+      }
+    }
+  }
+}
+
+function startSim(){
+  simTemp=20;simLog=[];simProgram=null;simProgElapsed=0;
+  if(simInterval) clearInterval(simInterval);
+  simInterval=setInterval(simTick,1000);
+}
+function stopSim(){
+  if(simInterval){clearInterval(simInterval);simInterval=null;}
+  simAutotuning=false;
+  simProgram=null;
+  simPaused=false;
+}
+
+function simTick(){
+  const unit=unitSuffix();
+  let output=0;
+  if(!simPaused) simProgElapsed++;
+  if(simProgram&&!simPaused) simUpdateProgSetpoint();
+
+  if(simAutotuning){
+    // Bang-bang relay around target ±5°C hysteresis
+    if(simAtPhase==='high'){
+      output=100;
+      if(simTemp>=simAtTargetC+5){
+        simAtPhase='low';
+        if(simAtHigh===null||simTemp>simAtHigh) simAtHigh=simTemp;
+      }
+    }else{
+      output=0;
+      if(simTemp<=simAtTargetC-5){
+        simAtPhase='high';
+        if(simAtLow===null||simTemp<simAtLow) simAtLow=simTemp;
+        simAtCycles++;
+        if(simAtCycles>=5){
+          // Autotune complete — calculate plausible PID gains from oscillation data
+          simAutotuning=false;
+          autotuneStartTime=null;
+          const amplitude=((simAtHigh||simAtTargetC+5)-(simAtLow||simAtTargetC-5));
+          const Ku=4/(Math.PI*(amplitude/2)*0.01+0.001); // relay amplitude method approx
+          const Tu=60; // estimated period in seconds (rough)
+          const kp=parseFloat((0.45*Ku).toFixed(4));
+          const ki=parseFloat((0.54*Ku/Tu).toFixed(5));
+          const kd=parseFloat((0.075*Ku*Tu).toFixed(4));
+          simAutotuneResult={kp,ki,kd,temp_c:simAtTargetC};
+          const tStr=cToDisplay(simAtTargetC)+unitSuffix();
+          document.getElementById('at-idle-ui').classList.add('hidden');
+          document.getElementById('at-running-ui').classList.add('hidden');
+          document.getElementById('at-done-ui').classList.remove('hidden');
+          document.getElementById('at-done-temp').textContent=tStr;
+          document.getElementById('at-done-temp2').textContent=tStr;
+          document.getElementById('at-result-grid').innerHTML=`
+            <div class="pid-card"><div class="pid-letter">Kp</div><div class="pid-val">${kp}</div></div>
+            <div class="pid-card"><div class="pid-letter">Ki</div><div class="pid-val">${ki}</div></div>
+            <div class="pid-card"><div class="pid-letter">Kd</div><div class="pid-val">${kd}</div></div>`;
+          showToast('Sim autotune complete!','success');
+        }
+      }
+    }
+  }else if(heaterOn){
+    const err=simSetpoint-simTemp;
+    output=Math.max(0,Math.min(100,err>5?100:err<-5?0:(err+5)*10));
+  }
+
+  const loss=0.015*(simTemp-20);
+  simTemp=Math.max(20,simTemp+(output/100*4.5-loss));
+
+  const now=Date.now()/1000;
+  const sp=simAutotuning?simAtTargetC:simSetpoint;
+  simLog.push({ts:now,temp:simTemp,setpoint:sp});
+  if(simLog.length>7200) simLog.shift();
+
+  // Update program bar in sim mode
+  const simBar=document.getElementById('prog-status-bar');
+  if(simProgram){
+    simBar.classList.remove('hidden');
+    document.getElementById('prog-aborted-msg').classList.add('hidden');
+    document.getElementById('prog-running-content').classList.remove('hidden');
+    document.getElementById('prog-name-display').textContent=simProgram.name||'Program';
+    const simBadge=document.getElementById('prog-state-badge');
+    simBadge.textContent=simPaused?'paused':'running';simBadge.className='prog-state '+(simPaused?'paused':'running');
+    const totalSegs=simProgram.segments.length;
+    const overallPct=Math.round((simProgSegIdx/totalSegs)*100);
+    document.getElementById('prog-pct').textContent=overallPct+'%';
+    document.getElementById('prog-gauge').style.width=overallPct+'%';
+    renderProgSteps(simProgram.segments, simProgSegIdx, overallPct);
+    const elMin=Math.floor(simProgElapsed/60);
+    document.getElementById('prog-elapsed').textContent=elMin;
+    document.getElementById('prog-remaining').textContent='—';
+  } else if(!document.getElementById('prog-aborted-msg').classList.contains('hidden')){
+    // aborted state — leave bar visible with message
+  } else {
+    simBar.classList.add('hidden');
+  }
+
+  // Update active zone panel in sim mode
+  const azPanel=document.getElementById('active-zone-content');
+  if(azPanel&&lastZones.length){
+    const sp=simSetpoint;
+    const active=lastZones.reduce((a,b)=>Math.abs(b.center_temp_c-sp)<Math.abs(a.center_temp_c-sp)?b:a);
+    const dist=Math.abs(active.center_temp_c-sp);
+    const label=cToDisplay(active.center_temp_c)+unitSuffix();
+    azPanel.innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+      <div><span style="color:var(--text2);font-size:12px;">Zone</span><div style="font-size:16px;font-weight:600;color:var(--accent);">${label}</div></div>
+      <div><span style="color:var(--text2);font-size:12px;">Kp</span><div style="font-size:15px;font-weight:600;">${active.kp.toFixed(3)}</div></div>
+      <div><span style="color:var(--text2);font-size:12px;">Ki</span><div style="font-size:15px;font-weight:600;">${active.ki.toFixed(4)}</div></div>
+      <div><span style="color:var(--text2);font-size:12px;">Kd</span><div style="font-size:15px;font-weight:600;">${active.kd.toFixed(3)}</div></div>
+      <div style="margin-left:auto;font-size:12px;color:var(--text2);">${dist<60?'● In range':'○ '+Math.round(dist)+'° away'}</div>
+    </div>`;
+  }
+
+  // Update dashboard display
+  const disp=cToDisplay(simTemp);
+  const tEl=document.getElementById('temp-display');
+  tEl.innerHTML=`${disp}<span class="temp-unit">${unit}</span>`;
+  const tempF=(simTemp*9/5)+32;
+  tEl.className='temp-value '+(tempF<200?'cool':tempF<1600?'hot':'very-hot');
+  document.getElementById('sp-display').textContent=cToDisplay(sp)+unit;
+  document.getElementById('out-display').textContent=output.toFixed(1)+'%';
+  document.getElementById('output-gauge').style.width=output+'%';
+  document.getElementById('gauge-pct').textContent=output.toFixed(0)+'%';
+  document.getElementById('cj-display').textContent=cToDisplay(22)+unit;
+  // Update chart status bar in sim mode too
+  chartUpdateStatusBar({ temp: simTemp, setpoint: sp, pid_output: output });
+
+  // Autotune live stats
+  if(simAutotuning){
+    if(!autotuneStartTime) autotuneStartTime=Date.now();
+    const el=Math.round((Date.now()-autotuneStartTime)/1000);
+    const m=Math.floor(el/60),s=el%60;
+    document.getElementById('at-live-temp').textContent=disp+unit;
+    document.getElementById('at-live-output').textContent=output.toFixed(0)+'%';
+    document.getElementById('at-live-cycles').textContent=simAtCycles+' / 5';
+    document.getElementById('at-live-elapsed').textContent=`${m}m ${s}s`;
+    document.getElementById('at-live-peak-high').textContent=simAtHigh?cToDisplay(simAtHigh)+unit:'—';
+    document.getElementById('at-live-peak-low').textContent=simAtLow?cToDisplay(simAtLow)+unit:'—';
+    const phase=Math.abs(simTemp-simAtTargetC)>15?'Heating to setpoint...'
+      :(simAtCycles>0?`Oscillating — cycle ${simAtCycles} of 5`:'Stabilizing...');
+    document.getElementById('at-phase-text').textContent=phase;
+  }
+}
+
+function onSimToggle(on){
+  apiPost('/api/sim',{sim_mode:on});
+}
+
+// ── SSE ───────────────────────────────────────────────────────────────────────
+function connectSSE(){
+  const es=new EventSource(API+'/api/stream');
+  es.onopen=()=>{document.getElementById('conn-dot').classList.add('ok');document.getElementById('conn-text').textContent='Live';};
+  es.onmessage=e=>{
+    try{lastStatus=JSON.parse(e.data);updateDashboard(lastStatus);chartUpdateStatusBar(lastStatus);}
+    catch(err){console.warn('SSE parse error:',err);}
+  };
+  es.onerror=()=>{
+    document.getElementById('conn-dot').classList.remove('ok');
+    document.getElementById('conn-text').textContent='Reconnecting...';
+    es.close();setTimeout(connectSSE,3000);
+  };
+}
+
+// ── Dashboard (real hardware) ─────────────────────────────────────────────────
+function updateDashboard(s){
+  const newSimMode=s.sim_mode===true||s.sim_mode==='true';
+  if(newSimMode!==simMode){
+    simMode=newSimMode;
+    document.getElementById('sim-toggle').checked=simMode;
+    document.getElementById('sim-warning').classList.toggle('hidden',!simMode);
+    document.getElementById('sim-badge').classList.toggle('on',simMode);
+    document.getElementById('logo-text').classList.toggle('sim',simMode);
+    document.body.classList.toggle('sim-mode',simMode);
+    if(simMode){startSim();showToast('Simulation mode ON','success');}else{stopSim();simTemp=20;setContactor(false,true);heaterOn=false;updateHeaterBtn();showToast('Simulation mode OFF','success');}
+  }
+  if(simMode) return;
+  const t=s.temp,disp=cToDisplay(t),unit=unitSuffix();
+  const tEl=document.getElementById('temp-display');
+  tEl.innerHTML=`${disp}<span class="temp-unit">${unit}</span>`;
+  const tempF=(t*9/5)+32;
+  tEl.className='temp-value '+(tempF<200?'cool':tempF<1600?'hot':'very-hot');
+  document.getElementById('sp-display').textContent=cToDisplay(s.setpoint)+unit;
+  document.getElementById('out-display').textContent=s.pid_output.toFixed(1)+'%';
+  document.getElementById('cj-display').textContent=cToDisplay(s.cold_junction)+unit;
+  currentSetpointC=s.setpoint;
+  document.getElementById('sp-tap-display').textContent=cToDisplay(s.setpoint)+unit;
+  const pct=Math.min(100,Math.max(0,s.pid_output));
+  document.getElementById('output-gauge').style.width=pct+'%';
+  document.getElementById('gauge-pct').textContent=pct.toFixed(0)+'%';
+  // Approach phase label
+  const apLabel=document.getElementById('approach-phase-label');
+  if(apLabel){
+    const phaseMap={full:'⚡ Full Power',ramp:'↘ Ramping Down',cruise:'— Cruise',pid:'◎ PID Active','door-recovery':'🔥 Door Recovery'};
+    const phase=s.approach_phase||'pid';
+    if((phase==='pid'||!s.heater_enabled) && !s.door_recovery_active){
+      apLabel.classList.add('hidden');
+    } else {
+      apLabel.classList.remove('hidden');
+      apLabel.textContent=phaseMap[phase]||phase;
+    }
+  }
+  lastZones=s.pid_zones||[];
+  // Active zone display on dashboard
+  const azPanel=document.getElementById('active-zone-content');
+  if(azPanel){
+    const sp=s.setpoint||currentSetpointC||0;
+    if(!lastZones.length){
+      azPanel.innerHTML='<span style="color:var(--text2);">No zones — run autotune in PID tab</span>';
+    } else {
+      // Find closest zone
+      const active=lastZones.reduce((a,b)=>Math.abs(b.center_temp_c-sp)<Math.abs(a.center_temp_c-sp)?b:a);
+      const dist=Math.abs(active.center_temp_c-sp);
+      const label=cToDisplay(active.center_temp_c)+unitSuffix();
+      azPanel.innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div><span style="color:var(--text2);font-size:12px;">Zone</span><div style="font-size:16px;font-weight:600;color:var(--accent);">${label}</div></div>
+        <div><span style="color:var(--text2);font-size:12px;">Kp</span><div style="font-size:15px;font-weight:600;">${active.kp.toFixed(3)}</div></div>
+        <div><span style="color:var(--text2);font-size:12px;">Ki</span><div style="font-size:15px;font-weight:600;">${active.ki.toFixed(4)}</div></div>
+        <div><span style="color:var(--text2);font-size:12px;">Kd</span><div style="font-size:15px;font-weight:600;">${active.kd.toFixed(3)}</div></div>
+        <div style="margin-left:auto;font-size:12px;color:var(--text2);">${dist<60?'● In range':'○ '+Math.round(dist)+'° away'}</div>
+      </div>`;
+    }
+  }
+  heaterOn=s.heater_enabled;
+  updateHeaterBtn();
+  setContactor(s.contactor);
+
+  // Fault
+  const fb=document.getElementById('fault-banner');
+  if(s.fault>0||s.estop||s.watchdog||s.door_open){
+    let msgs=[];
+    if(s.door_open) msgs.push('🚪 Door Open — close door to resume heating');
+    if(s.estop) msgs.push('⛔ Emergency Stop Active — reset required');
+    if(s.watchdog&&!s.estop) msgs.push('⚠️ Watchdog — waiting for ESP32 connection...');
+    msgs.push(...(s.fault_messages||[]));
+    fb.innerHTML=msgs.join('<br>');
+    if(s.estop) fb.innerHTML+=`<br><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="resetEStop()">Reset E-Stop</button>`;
+    fb.classList.add('visible');
+  }else{fb.classList.remove('visible');}
+
+  // Program bar
+  const prog=s.program,bar=document.getElementById('prog-status-bar');
+  const abortedOverlay=document.getElementById('prog-aborted-msg');
+  if(prog&&prog.state==='aborted'&&prog.name&&!progAbortDismissed){
+    bar.classList.remove('hidden');
+    abortedOverlay.classList.remove('hidden');
+    document.getElementById('prog-running-content').classList.add('hidden');
+  } else if(prog&&prog.state!=='idle'&&prog.state!=='aborted'&&prog.name){
+    progAbortDismissed=false;
+    bar.classList.remove('hidden');
+    abortedOverlay.classList.add('hidden');
+    document.getElementById('prog-running-content').classList.remove('hidden');
+    document.getElementById('prog-name-display').textContent=prog.name;
+    const badge=document.getElementById('prog-state-badge');
+    badge.textContent=prog.state;badge.className='prog-state '+prog.state;
+    document.getElementById('prog-pct').textContent=prog.overall_progress_pct+'%';
+    document.getElementById('prog-gauge').style.width=prog.overall_progress_pct+'%';
+    // Auto-fetch segment list if not cached (e.g. page reload while program running)
+    if(activeProgSegments.length===0 && prog.id){
+      apiGet(`/api/programs/${prog.id}`).then(p=>{
+        if(p&&p.segments){ activeProgSegments=p.segments; }
+      });
+    }
+    renderProgSteps(activeProgSegments, prog.segment_index, prog.segment_progress_pct);
+    document.getElementById('prog-elapsed').textContent=prog.elapsed_min;
+    document.getElementById('prog-remaining').textContent=prog.remaining_min;
+  }else if(!abortedOverlay||abortedOverlay.classList.contains('hidden')){bar.classList.add('hidden');}
+
+  // Autotune
+  if(s.autotuning){
+    document.getElementById('at-idle-ui').classList.add('hidden');
+    document.getElementById('at-running-ui').classList.remove('hidden');
+    document.getElementById('at-done-ui').classList.add('hidden');
+    document.getElementById('at-running-setpoint').textContent=cToDisplay(s.autotune_setpoint)+unit;
+    document.getElementById('at-live-temp').textContent=disp+unit;
+    document.getElementById('at-live-output').textContent=pct.toFixed(0)+'%';
+    document.getElementById('at-live-cycles').textContent=(s.autotune_cycles||0)+' / 5';
+    document.getElementById('at-live-peak-high').textContent=s.autotune_peak_high?cToDisplay(s.autotune_peak_high)+unit:'—';
+    document.getElementById('at-live-peak-low').textContent=s.autotune_peak_low?cToDisplay(s.autotune_peak_low)+unit:'—';
+    if(!autotuneStartTime) autotuneStartTime=Date.now();
+    const el=Math.round((Date.now()-autotuneStartTime)/1000);
+    document.getElementById('at-live-elapsed').textContent=`${Math.floor(el/60)}m ${el%60}s`;
+    const phase=Math.abs(t-s.autotune_setpoint)>20?'Heating to setpoint...'
+      :(s.autotune_cycles>0?`Oscillating — cycle ${s.autotune_cycles} of 5`:'Stabilizing...');
+    document.getElementById('at-phase-text').textContent=phase;
+  }else if(s.autotune_done&&s.autotune_result&&!autotuneApplied){
+    autotuneStartTime=null;
+    document.getElementById('at-idle-ui').classList.add('hidden');
+    document.getElementById('at-running-ui').classList.add('hidden');
+    document.getElementById('at-done-ui').classList.remove('hidden');
+    const r=s.autotune_result,tStr=cToDisplay(s.autotune_setpoint)+unit;
+    document.getElementById('at-done-temp').textContent=tStr;
+    document.getElementById('at-done-temp2').textContent=tStr;
+    document.getElementById('at-result-grid').innerHTML=`
+      <div class="pid-card"><div class="pid-letter">Kp</div><div class="pid-val">${r.kp}</div></div>
+      <div class="pid-card"><div class="pid-letter">Ki</div><div class="pid-val">${r.ki}</div></div>
+      <div class="pid-card"><div class="pid-letter">Kd</div><div class="pid-val">${r.kd}</div></div>`;
+  }else if(!s.autotuning){autotuneStartTime=null;resetAutotuneUI();}
+
+  // Ramp autotune
+  updateRampAutotuneUI(s);
+
+  if(document.getElementById('page-pid').classList.contains('active'))
+    renderZoneTable(lastZones,s.setpoint);
+}
+
+function updateHeaterBtn(){
+  const btn=document.getElementById('heater-main-btn');
+  if(heaterOn){btn.textContent='■ STOP';btn.className='heater-btn stop';}
+  else{btn.textContent='▶ START';btn.className='heater-btn start';}
+}
+
+function renderZoneTable(zones,setpointC){
+  const tbody=document.getElementById('zone-tbody');
+  if(!zones||!zones.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — run autotune below</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=zones.map(z=>{
+    const zDisp=cToDisplay(z.center_temp_c)+unitSuffix();
+    const d=new Date(z.tuned_at*1000);
+    const isActive=Math.abs((setpointC||0)-z.center_temp_c)<60;
+    return`<tr class="${isActive?'zone-active':''}">
+      <td>${zDisp}</td><td>${z.kp.toFixed(4)}</td><td>${z.ki.toFixed(5)}</td><td>${z.kd.toFixed(4)}</td>
+      <td>${d.getMonth()+1}/${d.getDate()}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-secondary btn-sm" onclick="editZone(${z.id})" style="margin-right:4px;">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteZone(${z.id},'${zDisp}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── PID Zone edit ─────────────────────────────────────────────────────────────
+let _pidZoneDraft = {};
+
+function editZone(id){
+  const z = lastZones.find(z=>z.id===id);
+  if(!z) return;
+  _pidZoneDraft = {
+    id:            id,
+    center_temp_c: z.center_temp_c,
+    kp:            z.kp,
+    ki:            z.ki,
+    kd:            z.kd,
+  };
+  openNumpad('pid-zone-kp', 'Kp — ' + cToDisplay(z.center_temp_c) + unitSuffix(), z.kp.toFixed(4), true);
+}
+
+function _pidZoneNumpadNext(field, val){
+  const numVal = parseFloat(val);
+  if(field === 'pid-zone-kp'){
+    _pidZoneDraft.kp = numVal;
+    openNumpad('pid-zone-ki', 'Ki', _pidZoneDraft.ki.toFixed(5), true);
+  } else if(field === 'pid-zone-ki'){
+    _pidZoneDraft.ki = numVal;
+    openNumpad('pid-zone-kd', 'Kd', _pidZoneDraft.kd.toFixed(4), true);
+  } else if(field === 'pid-zone-kd'){
+    _pidZoneDraft.kd = numVal;
+    _savePidZoneDraft();
+  }
+}
+
+async function _savePidZoneDraft(){
+  const d = _pidZoneDraft;
+  const res = await apiPost('/api/pid/zones', {
+    center_temp_c: d.center_temp_c,
+    kp: d.kp,
+    ki: d.ki,
+    kd: d.kd,
+  });
+  if(res && res.ok){
+    showToast('PID zone updated','success');
+    const zones = await apiGet('/api/pid/zones');
+    if(zones){ lastZones=zones; renderZoneTable(lastZones, lastStatus?lastStatus.setpoint:0); }
+  } else {
+    showToast('Error saving zone','error');
+  }
+  _pidZoneDraft = {};
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function toggleHeaterBtn(){
+  const btn=document.getElementById('heater-main-btn');
+  if(btn.disabled) return;  // Already processing — ignore double-tap
+  if(simMode){
+    heaterOn=!heaterOn;
+    updateHeaterBtn();
+    setContactor(heaterOn,true);
+    showToast(heaterOn?'Sim: heater ON':'Sim: heater OFF','success');
+    return;
+  }
+  // Disable button immediately to prevent double-tap while command is in flight.
+  // Do NOT flip heaterOn here — let SSE confirm the new state from the backend.
+  btn.disabled=true;
+  btn.style.opacity='0.5';
+  const enabling=!heaterOn;
+  apiPost('/api/control/enable',{enable:enabling})
+    .then(()=>showToast(enabling?'Heater started':'Heater stopped','success'))
+    .catch(()=>showToast('Heater command failed','error'))
+    .finally(()=>{
+      // Keep disabled for 2s — covers SSE round-trip and prevents double-tap on mobile
+      setTimeout(()=>{ btn.disabled=false; btn.style.opacity=''; }, 500);
+    });
+}
+function eStop(){
+  if(!confirm('Trigger Emergency Stop?\nThis immediately cuts all power to the oven.')) return;
+  heaterOn=false;simAutotuning=false;
+  updateHeaterBtn();setContactor(false,true);
+  apiPost('/api/control/estop').then(()=>showToast('Emergency Stop triggered','error'));
+}
+function abortProgram(){
+  apiPost('/api/program/abort').then(()=>{
+    document.getElementById('prog-aborted-msg').classList.remove('hidden');
+  });
+}
+function dismissAbort(){
+  progAbortDismissed=true;
+  document.getElementById('prog-aborted-msg').classList.add('hidden');
+  document.getElementById('prog-running-content').classList.remove('hidden');
+  document.getElementById('prog-status-bar').classList.add('hidden');
+}
+
+function resetEStop(){apiPost('/api/control/reset_estop').then(()=>showToast('E-Stop reset','success'));}
+
+// ── Numpad ────────────────────────────────────────────────────────────────────
+function openNumpad(target,title,currentVal,allowDot,allowNeg){
+  numpadTarget=target;
+  numpadBuffer=currentVal?String(currentVal):'';
+  numpadAllowDot=allowDot||false;
+  numpadAllowNeg=allowNeg||false;
+  numpadFresh=true;   // first digit keypress will auto-clear the pre-filled value
+  document.getElementById('numpad-title').textContent=title;
+  document.getElementById('numpad-display').textContent=numpadBuffer||'—';
+  const negBtn=document.getElementById('npkey-neg');
+  if(negBtn) negBtn.classList.toggle('hidden',!numpadAllowNeg);
+  document.getElementById('numpad-overlay').classList.add('open');
+}
+function npKey(k){
+  if(k==='back'){ numpadFresh=false; numpadBuffer=numpadBuffer.slice(0,-1); }
+  else if(k==='clear'){ numpadFresh=false; numpadBuffer=''; }
+  else if(k==='neg'){ numpadFresh=false; numpadBuffer=numpadBuffer.startsWith('-')?numpadBuffer.slice(1):('-'+numpadBuffer); }
+  else if(k==='.'){
+    if(numpadAllowDot&&!numpadBuffer.includes('.')&&numpadBuffer.length<8){
+      if(numpadFresh){ numpadBuffer='0'; numpadFresh=false; }
+      numpadBuffer+=k;
+    }
+  }
+  else{
+    if(numpadFresh){ numpadBuffer=''; numpadFresh=false; }   // auto-clear on first digit
+    if(numpadBuffer.length<8) numpadBuffer+=k;
+  }
+  document.getElementById('numpad-display').textContent=numpadBuffer||'—';
+}
+function npConfirm(){
+  const val=parseFloat(numpadBuffer);
+  if(isNaN(val)){showToast('Enter a valid number','error');return;}
+
+  if(numpadTarget==='setpoint'){
+    if(val<=0){showToast('Enter a valid temperature','error');return;}
+    currentSetpointC=displayToC(val);
+    if(simMode) simSetpoint=currentSetpointC;
+    const label=val+unitSuffix();
+    document.getElementById('sp-tap-display').textContent=label;
+    document.getElementById('sp-display').textContent=label;
+    if(!simMode) apiPost('/api/control/setpoint',{temp_c:currentSetpointC})
+      .then(()=>showToast(`Setpoint → ${label}`,'success'));
+    else showToast(`Setpoint → ${label}`,'success');
+
+  }else if(numpadTarget==='at-target'){
+    if(val<=0){showToast('Enter a valid temperature','error');return;}
+    atSetpointC=displayToC(val);
+    document.getElementById('at-setpoint-display').textContent=val+unitSuffix();
+
+  }else if(numpadTarget==='rat-temp'){
+    if(val<=0){showToast('Enter a valid temperature','error');return;}
+    ratTempC=displayToC(val);
+    document.getElementById('rat-temp-display').textContent=val+unitSuffix();
+
+  }else if(numpadTarget==='rat-output'){
+    const o=Math.max(1,Math.min(100,val));
+    ratOutput=o;
+    document.getElementById('rat-output-display').textContent=o+'%';
+
+  }else if(numpadTarget==='rat-duration'){
+    const d=Math.max(1,val);
+    ratDurMin=d;
+    document.getElementById('rat-duration-display').textContent=d+' min';
+    document.getElementById('rat-dur-display').textContent=d;
+
+  }else if(numpadTarget==='sm-purge-days'){
+    const d=Math.max(1,Math.round(val));
+    smPurgeDays=d;
+    document.getElementById('sm-purge-days-display').textContent=d+' days';
+
+  }else if(numpadTarget==='max-temp'){
+    if(val<=0){showToast('Enter a valid temperature','error');return;}
+    maxTempF=displayUnit==='F'?val:Math.round(val*9/5+32);
+    document.getElementById('max-temp-display').textContent=val+unitSuffix();
+
+  }else if(numpadTarget==='temp-offset'){
+    const offsetC=displayUnit==='F'?(val*5/9):val;
+    localStorage.setItem('tempOffsetC',offsetC.toString());
+    document.getElementById('temp-offset-display').textContent=val.toFixed(1)+unitSuffix();
+
+  }else if(numpadTarget==='cruise-mult'){
+    const mult = Math.max(0.1, val);
+    document.getElementById('cruise-mult-display').textContent = mult.toFixed(2) + '×';
+    if(_atMultSaved.cruise !== null && mult !== _atMultSaved.cruise) _atMultMarkDirty();
+
+  }else if(numpadTarget==='relay-mult'){
+    const mult = Math.max(0.1, val);
+    document.getElementById('relay-mult-display').textContent = mult.toFixed(2) + '×';
+    if(_atMultSaved.relay !== null && mult !== _atMultSaved.relay) _atMultMarkDirty();
+
+  }else if(numpadTarget==='pid-kp'){
+    pidVals.kp=val;document.getElementById('kp-display').textContent=val;
+  }else if(numpadTarget==='pid-ki'){
+    pidVals.ki=val;document.getElementById('ki-display').textContent=val;
+  }else if(numpadTarget==='pid-kd'){
+    pidVals.kd=val;document.getElementById('kd-display').textContent=val;
+
+  }else if(numpadTarget&&numpadTarget.startsWith('approach-')){
+    const rawVal=numpadBuffer;
+    numpadBuffer='';
+    document.getElementById('numpad-overlay').classList.remove('open');
+    _approachNumpadNext(numpadTarget, rawVal);
+    return;
+
+  }else if(numpadTarget&&numpadTarget.startsWith('drecov-')){
+    const rawVal=numpadBuffer;
+    numpadBuffer='';
+    document.getElementById('numpad-overlay').classList.remove('open');
+    _doorRecoveryNumpadNext(numpadTarget, rawVal);
+    return;
+
+  }else if(numpadTarget&&numpadTarget.startsWith('pid-zone-')){
+    const rawVal=numpadBuffer;
+    numpadBuffer='';
+    document.getElementById('numpad-overlay').classList.remove('open');
+    _pidZoneNumpadNext(numpadTarget, rawVal);
+    return;
+
+  }else if(numpadTarget&&numpadTarget.startsWith('seg-')){
+    const parts=numpadTarget.split('-');
+    const idx=parseInt(parts[1]);
+    const field=parts[2];
+    editSegments[idx][field]=val;
+    renderSegmentEditor();
+  }
+
+  document.getElementById('numpad-overlay').classList.remove('open');
+  numpadBuffer='';
+}
+function npCancel(){document.getElementById('numpad-overlay').classList.remove('open');numpadBuffer='';}
+
+// ── QWERTY keyboard ───────────────────────────────────────────────────────────
+function openKeyboard(targetId, title, currentVal){
+  kbdTarget  = targetId;
+  kbdBuffer  = currentVal || '';
+  kbdShift   = false;
+  kbdNumMode = false;
+  document.getElementById('kbd-title').textContent = title;
+  _kbdRefreshDisplay();
+  document.getElementById('kbd-numrow').classList.add('hidden');
+  document.getElementById('kbd-overlay').classList.add('open');
+}
+
+function _kbdRefreshDisplay(){
+  const el = document.getElementById('kbd-display');
+  el.textContent = kbdBuffer || '';
+  // Update shift/caps visual on keys
+  document.querySelectorAll('#kbd-overlay .kkey:not(.wide):not(.space):not(.back-k):not(.confirm-k)').forEach(k=>{
+    if(k.textContent.length===1 && k.textContent.match(/[a-z]/i)){
+      k.textContent = kbdShift ? k.textContent.toUpperCase() : k.textContent.toLowerCase();
+    }
+  });
+}
+
+function kKey(ch){
+  if(ch==='back'){
+    kbdBuffer = kbdBuffer.slice(0,-1);
+  } else {
+    const out = kbdShift ? ch.toUpperCase() : ch;
+    kbdBuffer += out;
+    if(kbdShift){ kbdShift=false; }
+  }
+  _kbdRefreshDisplay();
+}
+
+function kShift(){
+  kbdShift = !kbdShift;
+  _kbdRefreshDisplay();
+}
+
+function kNumMode(){
+  kbdNumMode = !kbdNumMode;
+  document.getElementById('kbd-numrow').classList.toggle('hidden', !kbdNumMode);
+}
+
+function kConfirm(){
+  if(!kbdTarget) return;
+  const val = kbdBuffer.trim();
+  kbdValues[kbdTarget] = val;
+  document.getElementById(kbdTarget).value = val;
+  // Update the display span
+  const dispEl = document.getElementById(kbdTarget + '-display');
+  if(dispEl){
+    dispEl.textContent = val || (kbdTarget==='pe-name' ? 'e.g. 1084 Harden' : 'Optional notes');
+    dispEl.style.color = val ? 'var(--text)' : 'var(--text2)';
+  }
+  document.getElementById('kbd-overlay').classList.remove('open');
+  kbdBuffer='';kbdTarget=null;
+}
+
+
+const _atMethodInfo = {
+  'steelhaus':      '<strong>STEELHAUS</strong> — Recommended for DIY kilns with brick or refractory thermal mass. Uses conservative proportional gain with a capped derivative term that prevents noise amplification at low temperatures. Derived from real-world tuning by Darren Chapman on a DIY oven.',
+  'ziegler-nichols':'<strong>Ziegler-Nichols</strong> — Aggressive. Fastest approach to setpoint but will overshoot significantly. Good for processes that need to get to temperature quickly and can tolerate overshoot.',
+  'tyreus-luyben':  '<strong>Tyreus-Luyben</strong> — Very conservative. Slow approach with minimal overshoot and no derivative term. Good for processes where overshoot is unacceptable but speed doesn\'t matter.',
+  'some-overshoot': '<strong>Some Overshoot</strong> — Moderate. Faster than Tyreus-Luyben with small overshoot. A general-purpose starting point if STEELHAUS doesn\'t suit your oven.',
+  'no-overshoot':   '<strong>No Overshoot</strong> — Slowest approach. Creeps up to setpoint from below with essentially no overshoot. Use when the process absolutely cannot exceed the target temperature.',
+};
+
+function updateAutotuneMethodInfo() {
+  const sel = document.getElementById('at-method');
+  const box = document.getElementById('at-method-info');
+  if (!sel || !box) return;
+  box.innerHTML = _atMethodInfo[sel.value] || '';
+}
+
+function startAutotune(){
+  if(simMode){
+    simAtTargetC=atSetpointC;
+    simAtHigh=null;simAtLow=null;simAtCycles=0;simAtPhase='high';
+    simAutotuning=true;autotuneStartTime=Date.now();
+    setContactor(true,true);
+    document.getElementById('at-idle-ui').classList.add('hidden');
+    document.getElementById('at-running-ui').classList.remove('hidden');
+    document.getElementById('at-done-ui').classList.add('hidden');
+    document.getElementById('at-running-setpoint').textContent=cToDisplay(atSetpointC)+unitSuffix();
+    document.getElementById('at-live-cycles').textContent='0 / 5';
+    showToast('Sim autotune started','success');
+    return;
+  }
+  apiPost('/api/autotune/start',{setpoint_c:atSetpointC,method:document.getElementById('at-method').value})
+    .then(()=>{
+      autotuneStartTime=Date.now();
+      autotuneApplied=false;
+      document.getElementById('at-idle-ui').classList.add('hidden');
+      document.getElementById('at-running-ui').classList.remove('hidden');
+      document.getElementById('at-done-ui').classList.add('hidden');
+      document.getElementById('at-running-setpoint').textContent=cToDisplay(atSetpointC)+unitSuffix();
+      document.getElementById('at-live-cycles').textContent='0 / 5';
+      showToast(`Autotune started at ${cToDisplay(atSetpointC)}${unitSuffix()}`,'success');
+    });
+}
+function abortAutotune(){
+  autotuneStartTime=null;
+  if(simMode){simAutotuning=false;setContactor(heaterOn,true);resetAutotuneUI();showToast('Autotune aborted','error');return;}
+  apiPost('/api/autotune/abort').then(()=>{resetAutotuneUI();showToast('Autotune aborted','error');});
+}
+function applyAutotune(){
+  apiPost('/api/autotune/apply').then(async d=>{
+    if(d&&d.ok){
+      autotuneApplied=true;
+      autotuneStartTime=null;
+      showToast('Zone saved!','success');
+      resetAutotuneUI();
+      const zones = await apiGet('/api/pid/zones');
+      if(zones){ lastZones=zones; renderZoneTable(lastZones, lastStatus?lastStatus.setpoint:0); }
+    } else if(d&&d.error){
+      showToast(d.error,'error');
+    }
+  });
+}
+function resetAutotuneUI(){
+  document.getElementById('at-idle-ui').classList.remove('hidden');
+  document.getElementById('at-running-ui').classList.add('hidden');
+  document.getElementById('at-done-ui').classList.add('hidden');
+}
+
+// ── Ramp Autotune ─────────────────────────────────────────────────────────────
+function ratTempDisplay(){ return displayUnit==='F'?Math.round(ratTempC*9/5+32):Math.round(ratTempC); }
+function ratOutputDisplay(){ return ratOutput.toString(); }
+function ratDurDisplay(){ return ratDurMin.toString(); }
+
+function startRampAutotune(){
+  ratApplied=false;
+  apiPost('/api/ramp_autotune/start',{
+    stabilize_temp_c: ratTempC,
+    step_output: ratOutput,
+    step_duration_s: ratDurMin * 60
+  }).then(d=>{
+    if(d&&d.ok){
+      document.getElementById('rat-idle-ui').classList.add('hidden');
+      document.getElementById('rat-running-ui').classList.remove('hidden');
+      document.getElementById('rat-done-ui').classList.add('hidden');
+    }
+  });
+}
+function abortRampAutotune(){
+  apiPost('/api/ramp_autotune/abort').then(()=>{
+    resetRampAutotuneUI();
+    showToast('Ramp autotune aborted','error');
+  });
+}
+function applyRampAutotune(){
+  apiPost('/api/ramp_autotune/apply').then(d=>{
+    if(d&&d.ok){
+      ratApplied=true;
+      showToast('Ramp tune zone saved!','success');
+      resetRampAutotuneUI();
+      loadRampTuneZones();
+    }else showToast(d&&d.error||'Save failed','error');
+  });
+}
+function resetRampAutotuneUI(){
+  document.getElementById('rat-idle-ui').classList.remove('hidden');
+  document.getElementById('rat-running-ui').classList.add('hidden');
+  document.getElementById('rat-done-ui').classList.add('hidden');
+}
+function updateRampAutotuneUI(s){
+  if(s.ramp_autotuning){
+    document.getElementById('rat-idle-ui').classList.add('hidden');
+    document.getElementById('rat-running-ui').classList.remove('hidden');
+    document.getElementById('rat-done-ui').classList.add('hidden');
+    const unit=unitSuffix();
+    const phaseLabels={stabilize:'Stabilizing at setpoint...',step:'Step applied — measuring rate...',done:'Complete',aborted:'Aborted'};
+    document.getElementById('rat-phase-text').textContent=phaseLabels[s.ramp_autotune_phase]||s.ramp_autotune_phase;
+    document.getElementById('rat-live-temp').textContent=cToDisplay(s.temp)+unit;
+    document.getElementById('rat-live-phase').textContent=s.ramp_autotune_phase||'—';
+    const elS=s.ramp_autotune_elapsed||0;
+    document.getElementById('rat-live-elapsed').textContent=`${Math.floor(elS/60)}m ${(elS%60).toFixed(0)}s`;
+    document.getElementById('rat-live-output').textContent=s.pid_output.toFixed(0)+'%';
+  }else if(s.ramp_autotune_done && s.ramp_autotune_result && !ratApplied){
+    document.getElementById('rat-idle-ui').classList.add('hidden');
+    document.getElementById('rat-running-ui').classList.add('hidden');
+    document.getElementById('rat-done-ui').classList.remove('hidden');
+    const unit=unitSuffix();
+    const r=s.ramp_autotune_result;
+    document.getElementById('rat-done-temp').textContent=cToDisplay(s.ramp_autotune_temp_c)+unit;
+    const rateDisp=displayUnit==='F'?(r.rate_c_per_min*(9/5)).toFixed(2):r.rate_c_per_min.toFixed(2);
+    const kProc=displayUnit==='F'?(r.K*(9/5)).toFixed(4):r.K.toFixed(4);
+    document.getElementById('rat-result-stats').innerHTML=`
+      <div class="at-stat-card"><div class="at-stat-label">Kp</div><div class="at-stat-val">${r.kp}</div></div>
+      <div class="at-stat-card"><div class="at-stat-label">Ki</div><div class="at-stat-val">${r.ki}</div></div>
+      <div class="at-stat-card"><div class="at-stat-label">Measured Rate</div><div class="at-stat-val">${rateDisp}${unit}/min at ${r.step_output||ratOutput}%</div></div>
+      <div class="at-stat-card"><div class="at-stat-label">Lag Time</div><div class="at-stat-val">${r.L}s</div></div>`;
+  }else if(!s.ramp_autotuning && !s.ramp_autotune_done){
+    // idle
+  }
+}
+async function loadRampTuneZones(){
+  const zones=await apiGet('/api/ramp_tune/zones');
+  const tbody=document.getElementById('rat-zone-tbody');
+  if(!zones||!zones.length){
+    tbody.innerHTML=`<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — run ramp autotune</td></tr>`;
+    return;
+  }
+  const unit=unitSuffix();
+  tbody.innerHTML=zones.map(z=>{
+    const kProc=displayUnit==='F'?(z.K_proc*(9/5)).toFixed(4):z.K_proc.toFixed(4);
+    return `<tr>
+      <td>${cToDisplay(z.center_temp_c)}${unit}</td>
+      <td>${z.kp}</td><td>${z.ki}</td>
+      <td>${kProc}</td><td>${z.L_s.toFixed(1)}</td>
+      <td>${z.hold_pct != null ? z.hold_pct.toFixed(1)+'%' : '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRampTuneZone(${z.id},'${cToDisplay(z.center_temp_c)}${unit}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadThermalModel(){
+  const data=await apiGet('/api/thermal_model');
+  const tbody=document.getElementById('thermal-model-tbody');
+  if(!data||!data.length){
+    tbody.innerHTML=`<tr><td colspan="4" style="color:var(--text2);text-align:center;padding:20px;">No data yet — hold a temperature to build the model</td></tr>`;
+    return;
+  }
+  const unit=unitSuffix();
+  tbody.innerHTML=data.map(r=>{
+    const updated=new Date(r.updated_at*1000).toLocaleString();
+    return `<tr>
+      <td>${cToDisplay(r.temp_c)}${unit}</td>
+      <td style="color:var(--accent);font-weight:600;">${r.hold_pct.toFixed(1)}%</td>
+      <td>${r.samples}</td>
+      <td style="font-size:13px;color:var(--text2);">${updated}</td>
+    </tr>`;
+  }).join('');
+}
+async function clearThermalModel(){
+  if(!confirm('Clear all thermal model data? The model will rebuild from scratch on future runs.')) return;
+  const r=await apiPost('/api/thermal_model/clear');
+  if(r&&r.ok){showToast('Thermal model cleared','success');loadThermalModel();}
+}
+async function deleteRampTuneZone(id,label){
+  if(!confirm(`Delete ramp tune zone at ${label}?`)) return;
+  await fetch(`${API}/api/ramp_tune/zones/${id}`,{method:'DELETE'});
+  showToast('Zone deleted','success');
+  loadRampTuneZones();
+}
+
+
+function savePID(){
+  const kp=parseFloat(pidVals.kp),ki=parseFloat(pidVals.ki),kd=parseFloat(pidVals.kd);
+  if([kp,ki,kd].some(isNaN)){showToast('Enter all three values first','error');return;}
+  apiPost('/api/pid',{kp,ki,kd}).then(()=>showToast('Manual override applied','success'));
+}
+async function deleteZone(id,label){
+  if(!confirm(`Delete PID zone at ${label}?`)) return;
+  await fetch(`${API}/api/pid/zones/${id}`,{method:'DELETE'});
+  showToast('Zone deleted','success');
+  // Refresh zone list immediately
+  const zones = await apiGet('/api/pid/zones');
+  if(zones){ lastZones=zones; renderZoneTable(lastZones, lastStatus?lastStatus.setpoint:0); }
+}
+
+// ── Approach Zones ────────────────────────────────────────────────────────────
+
+let _approachZones = [];
+let _approachDraft = {};  // Holds values as user steps through numpad prompts
+
+function renderApproachZoneTable(zones){
+  _approachZones = zones || [];
+  const tbody = document.getElementById('approach-zone-tbody');
+  if(!tbody) return;
+  if(!_approachZones.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — add one below</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _approachZones.map(z => {
+    const sp   = cToDisplay(z.setpoint_c) + unitSuffix();
+    const fp   = (z.full_power_offset_c * 9/5).toFixed(0) + '°F';
+    const rs   = (z.ramp_start_offset_c * 9/5).toFixed(0) + '°F';
+    const cp   = z.cruise_power.toFixed(0) + '%';
+    const po   = (z.pid_offset_c * 9/5).toFixed(0) + '°F';
+    return `<tr>
+      <td>${sp}</td>
+      <td>${fp}</td>
+      <td>${rs}</td>
+      <td>${cp}</td>
+      <td>${po}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-secondary btn-sm" onclick="editApproachZone(${z.id})" style="margin-right:4px;">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteApproachZone(${z.id},'${sp}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadApproachZones(){
+  const zones = await apiGet('/api/approach/zones');
+  if(zones) renderApproachZoneTable(zones);
+}
+
+function startAddApproachZone(){
+  _approachDraft = {};
+  openNumpad('approach-setpoint', 'Approach Zone — Setpoint (°F)', '', true);
+}
+
+function editApproachZone(id){
+  const z = _approachZones.find(z=>z.id===id);
+  if(!z) return;
+  // Stash ALL existing values so each numpad step can show the current value as default
+  _approachDraft = {
+    id:                   id,
+    setpoint_c:           z.setpoint_c,
+    full_power_offset_c:  z.full_power_offset_c,
+    ramp_start_offset_c:  z.ramp_start_offset_c,
+    cruise_power:         z.cruise_power,
+    pid_offset_c:         z.pid_offset_c,
+  };
+  // Show current full-power offset as the prefilled value (°F delta)
+  const fpF = (z.full_power_offset_c * 9/5).toFixed(0);
+  openNumpad('approach-fp', 'Full Power Until (°F below setpoint)', fpF, true);
+}
+
+// Called by numpad confirm for each approach zone step
+function _approachNumpadNext(field, val){
+  const numVal = parseFloat(val);
+  const c = displayToC(numVal);
+  const deltaC = numVal * 5/9;  // °F offset → °C delta
+
+  if(field === 'approach-setpoint'){
+    _approachDraft.setpoint_c = c;
+    const fpDef = _approachDraft.full_power_offset_c != null
+      ? (_approachDraft.full_power_offset_c * 9/5).toFixed(0) : '150';
+    openNumpad('approach-fp', 'Full Power Until (°F below setpoint)', fpDef, true);
+
+  } else if(field === 'approach-fp'){
+    _approachDraft.full_power_offset_c = deltaC;
+    const rsDef = _approachDraft.ramp_start_offset_c != null
+      ? (_approachDraft.ramp_start_offset_c * 9/5).toFixed(0) : '75';
+    openNumpad('approach-rs', 'Cruise Start (°F below setpoint)', rsDef, true);
+
+  } else if(field === 'approach-rs'){
+    _approachDraft.ramp_start_offset_c = deltaC;
+    const cpDef = _approachDraft.cruise_power != null
+      ? _approachDraft.cruise_power.toFixed(0) : '25';
+    openNumpad('approach-cp', 'Cruise Power (%)', cpDef, true);
+
+  } else if(field === 'approach-cp'){
+    _approachDraft.cruise_power = numVal;
+    const poDef = _approachDraft.pid_offset_c != null
+      ? (_approachDraft.pid_offset_c * 9/5).toFixed(0) : '25';
+    openNumpad('approach-po', 'PID Start (°F below setpoint)', poDef, true);
+
+  } else if(field === 'approach-po'){
+    _approachDraft.pid_offset_c = deltaC;
+    _saveApproachZoneDraft();
+  }
+}
+
+async function _saveApproachZoneDraft(){
+  const d = _approachDraft;
+  const res = await apiPost('/api/approach/zones', {
+    setpoint_c:          d.setpoint_c,
+    full_power_offset_c: d.full_power_offset_c,
+    ramp_start_offset_c: d.ramp_start_offset_c,
+    cruise_power:        d.cruise_power,
+    pid_offset_c:        d.pid_offset_c,
+  });
+  if(res && res.ok){
+    showToast('Approach zone saved','success');
+    loadApproachZones();
+  } else {
+    showToast('Error saving zone','error');
+  }
+  _approachDraft = {};
+}
+
+async function deleteApproachZone(id, label){
+  if(!confirm(`Delete approach zone at ${label}?`)) return;
+  await fetch(`${API}/api/approach/zones/${id}`, {method:'DELETE'});
+  showToast('Approach zone deleted','success');
+  loadApproachZones();
+}
+
+// ── Door Recovery Zones ────────────────────────────────────────────────────────
+
+let _doorRecoveryZones = [];
+let _doorRecoveryDraft = {};
+
+function renderDoorRecoveryZoneTable(zones){
+  _doorRecoveryZones = zones || [];
+  const tbody = document.getElementById('door-recovery-zone-tbody');
+  if(!tbody) return;
+  if(!_doorRecoveryZones.length){
+    tbody.innerHTML=`<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:20px;">No zones yet — add one below</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _doorRecoveryZones.map(z => {
+    const sp  = cToDisplay(z.setpoint_c) + unitSuffix();
+    const bp  = z.boost_pct.toFixed(0) + '%';
+    const resumeOff = displayUnit==='F'
+      ? (z.resume_offset_c * 9/5).toFixed(1)
+      : z.resume_offset_c.toFixed(1);
+    const resumeDisp = resumeOff + unitSuffix() + ' below setpoint';
+    return `<tr>
+      <td>${sp}</td><td>${bp}</td><td>${resumeDisp}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-secondary btn-sm" onclick="editDoorRecoveryZone(${z.id})" style="margin-right:4px;">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDoorRecoveryZone(${z.id},'${sp}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadDoorRecoveryZones(){
+  const zones = await apiGet('/api/door_recovery/zones');
+  if(zones) renderDoorRecoveryZoneTable(zones);
+}
+
+function startAddDoorRecoveryZone(){
+  _doorRecoveryDraft = {};
+  openNumpad('drecov-setpoint', 'Door Recovery — Setpoint ('+unitSuffix()+')', '', true);
+}
+
+function editDoorRecoveryZone(id){
+  const z = _doorRecoveryZones.find(z=>z.id===id);
+  if(!z) return;
+  _doorRecoveryDraft = {
+    id:              id,
+    setpoint_c:      z.setpoint_c,
+    boost_pct:       z.boost_pct,
+    resume_offset_c: z.resume_offset_c,
+  };
+  openNumpad('drecov-boost', 'Boost Output (%)', z.boost_pct.toFixed(0), true);
+}
+
+function _doorRecoveryNumpadNext(field, val){
+  const numVal = parseFloat(val);
+  if(field === 'drecov-setpoint'){
+    _doorRecoveryDraft.setpoint_c = displayToC(numVal);
+    const def = _doorRecoveryDraft.boost_pct != null ? _doorRecoveryDraft.boost_pct.toFixed(0) : '100';
+    openNumpad('drecov-boost', 'Boost Output (%)', def, true);
+  } else if(field === 'drecov-boost'){
+    _doorRecoveryDraft.boost_pct = numVal;
+    // Resume offset: default 10°F = 5.6°C, displayed in current unit
+    const defOffset = displayUnit==='F' ? '10' : '5.6';
+    const curOffset = _doorRecoveryDraft.resume_offset_c != null
+      ? (displayUnit==='F' ? (_doorRecoveryDraft.resume_offset_c*9/5).toFixed(1) : _doorRecoveryDraft.resume_offset_c.toFixed(1))
+      : defOffset;
+    openNumpad('drecov-resume', 'Resume PID within ('+unitSuffix()+' of setpoint)', curOffset, true);
+  } else if(field === 'drecov-resume'){
+    // Convert display unit to °C for storage
+    _doorRecoveryDraft.resume_offset_c = displayUnit==='F' ? numVal * 5/9 : numVal;
+    _saveDoorRecoveryDraft();
+  }
+}
+
+async function _saveDoorRecoveryDraft(){
+  const d = _doorRecoveryDraft;
+  if(d.setpoint_c == null || isNaN(d.setpoint_c) ||
+     d.boost_pct  == null || isNaN(d.boost_pct)  ||
+     d.resume_offset_c == null || isNaN(d.resume_offset_c)){
+    showToast('Please enter all values','error');
+    _doorRecoveryDraft = {};
+    return;
+  }
+  const res = await apiPost('/api/door_recovery/zones', {
+    setpoint_c:      d.setpoint_c,
+    boost_pct:       d.boost_pct,
+    resume_offset_c: d.resume_offset_c,
+  });
+  if(res && res.ok){
+    showToast('Door recovery zone saved','success');
+    loadDoorRecoveryZones();
+  } else {
+    showToast('Error saving zone','error');
+  }
+  _doorRecoveryDraft = {};
+}
+
+async function deleteDoorRecoveryZone(id, label){
+  if(!confirm(`Delete door recovery zone at ${label}?`)) return;
+  await fetch(`${API}/api/door_recovery/zones/${id}`, {method:'DELETE'});
+  showToast('Door recovery zone deleted','success');
+  loadDoorRecoveryZones();
+}
+
+// ── Programs ──────────────────────────────────────────────────────────────────
+async function loadPrograms(){
+  const progs=await apiGet('/api/programs');if(!progs) return;
+  const list=document.getElementById('prog-list');
+  if(!progs.length){list.innerHTML='<div class="text-muted" style="text-align:center;padding:24px;">No programs — tap + New Program to create one.</div>';return;}
+  list.innerHTML=progs.map(p=>`
+    <div class="prog-item" onclick="showProgDetail(${p.id})">
+      <div class="prog-item-info">
+        <div class="prog-item-name">${p.name}</div>
+        <div class="prog-item-desc">${p.description||'—'}</div>
+      </div>
+      <div class="prog-item-meta">${p.segments?p.segments.length:0} seg</div>
+      <button class="btn btn-green btn-sm" onclick="runProgram(${p.id},event)">▶</button>
+    </div>`).join('');
+}
+async function showProgDetail(id){
+  const prog=await apiGet(`/api/programs/${id}`);if(!prog) return;
+  detailProgId=id;
+  document.getElementById('detail-prog-name').textContent=prog.name;
+  document.getElementById('detail-prog-desc').textContent=prog.description||'';
+  const unit=unitSuffix();
+  document.getElementById('detail-segs').innerHTML=prog.segments.map((s,i)=>`
+    <div class="seg-detail-card">
+      <div class="seg-num-big">${i+1}</div>
+      <span class="seg-type-tag ${s.type}">${s.type.toUpperCase()}</span>
+      <div class="seg-detail-text">
+        ${s.type==='ramp'
+          ?`Ramp to ${cToDisplay(s.target_temp)}${unit} at ${displayUnit==='F'?(s.rate_per_min*9/5).toFixed(1):s.rate_per_min.toFixed(1)}${unit}/min`
+          :s.duration_min===-1
+            ?`Soak at ${cToDisplay(s.target_temp)}${unit} — hold forever (continuous)`
+            :`Soak at ${cToDisplay(s.target_temp)}${unit} for ${s.duration_min} min`}
+      </div>
+    </div>`).join('');
+  document.getElementById('prog-list-view').classList.add('hidden');
+  document.getElementById('prog-detail-view').classList.add('active');
+  document.getElementById('prog-editor').classList.add('hidden');
+}
+function showProgList(){
+  document.getElementById('prog-list-view').classList.remove('hidden');
+  document.getElementById('prog-detail-view').classList.remove('active');
+  document.getElementById('prog-editor').classList.add('hidden');
+  loadPrograms();
+}
+function segmentLabel(s, unit){
+  // Human-readable label for a segment, e.g. "Ramp to 1925°F" or "Soak at 350°F"
+  const tempDisp = cToDisplay(s.target_temp) + unit;
+  if(s.type === 'ramp'){
+    const rate = displayUnit==='F' ? (s.rate_per_min*9/5).toFixed(0) : s.rate_per_min.toFixed(0);
+    return {label: `Ramp to ${tempDisp}`, sub: `${rate}${unit}/min`};
+  } else {
+    const dur = s.duration_min === -1 ? 'Hold forever' : `${s.duration_min} min`;
+    return {label: `Soak at ${tempDisp}`, sub: dur};
+  }
+}
+
+function renderProgSteps(segments, activeIdx, segProgressPct){
+  const unit = unitSuffix();
+  const el = document.getElementById('prog-steps-list');
+  if(!el || !segments || !segments.length) return;
+  el.innerHTML = segments.map((s, i) => {
+    const done    = i < activeIdx;
+    const active  = i === activeIdx;
+    const isSoak  = s.type === 'soak';
+    const cls     = done ? 'done' : active ? (isSoak ? 'active-soak' : 'active') : '';
+    const {label, sub} = segmentLabel(s, unit);
+    const numContent  = done ? '✓' : (i + 1);
+    const pct   = active ? Math.round(segProgressPct) : (done ? 100 : 0);
+    const barStyle = (active || done) ? `width:${pct}%` : 'width:0%';
+    return `<div class="prog-step ${cls}">
+      <div class="prog-step-num">${numContent}</div>
+      <div class="prog-step-info">
+        <div class="prog-step-label">${label}</div>
+        <div class="prog-step-sub">${sub}</div>
+        ${active ? `<div class="prog-step-bar-wrap"><div class="prog-step-bar" style="${barStyle}"></div></div>` : ''}
+      </div>
+      ${done ? '<div class="prog-step-check">✓</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+async function runProgram(id,e){
+  if(e) e.stopPropagation();
+  // Cache full segment list before starting so dashboard can show all steps
+  const prog = await apiGet(`/api/programs/${id}`);
+  if(prog && prog.segments) activeProgSegments = prog.segments;
+  const d=await apiPost(`/api/programs/${id}/start`);
+  if(d&&d.ok){showToast('Program started!','success');showTab('dashboard');}
+}
+function runDetailProgram(){runProgram(detailProgId,null);}
+function editDetailProgram(){
+  apiGet(`/api/programs/${detailProgId}`).then(prog=>{
+    if(!prog) return;
+    editProgramId=detailProgId;
+    document.getElementById('pe-name').value=prog.name;
+    document.getElementById('pe-desc').value=prog.description||'';
+    kbdValues['pe-name']=prog.name;
+    kbdValues['pe-desc']=prog.description||'';
+    const nameDisp=document.getElementById('pe-name-display');
+    const descDisp=document.getElementById('pe-desc-display');
+    if(nameDisp){nameDisp.textContent=prog.name||'e.g. 1084 Harden';nameDisp.style.color=prog.name?'var(--text)':'var(--text2)';}
+    if(descDisp){descDisp.textContent=prog.description||'Optional notes';descDisp.style.color=prog.description?'var(--text)':'var(--text2)';}
+    document.getElementById('edit-prog-title').textContent='Edit Program';
+    editSegments=prog.segments.map(s=>({
+      ...s,
+      target_temp:parseFloat(cToDisplay(s.target_temp)),
+      rate_per_min:displayUnit==='F'?s.rate_per_min*9/5:s.rate_per_min
+    }));
+    renderSegmentEditor();
+    document.getElementById('prog-detail-view').classList.remove('active');
+    document.getElementById('prog-editor').classList.remove('hidden');
+  });
+}
+async function deleteDetailProgram(){
+  if(!confirm('Delete this program? This cannot be undone.')) return;
+  await fetch(`${API}/api/programs/${detailProgId}`,{method:'DELETE'});
+  showToast('Program deleted','success');showProgList();
+}
+function showNewProgramForm(){
+  editProgramId=null;
+  document.getElementById('pe-name').value='';
+  document.getElementById('pe-desc').value='';
+  kbdValues['pe-name']='';
+  kbdValues['pe-desc']='';
+  const nameDisp=document.getElementById('pe-name-display');
+  const descDisp=document.getElementById('pe-desc-display');
+  if(nameDisp){nameDisp.textContent='e.g. 1084 Harden';nameDisp.style.color='var(--text2)';}
+  if(descDisp){descDisp.textContent='Optional notes';descDisp.style.color='var(--text2)';}
+  document.getElementById('edit-prog-title').textContent='New Program';
+  editSegments=[
+    {type:'ramp',target_temp:displayUnit==='F'?1475:802,rate_per_min:10,duration_min:0},
+    {type:'soak',target_temp:displayUnit==='F'?1475:802,rate_per_min:0,duration_min:10},
+  ];
+  renderSegmentEditor();
+  document.getElementById('prog-list-view').classList.add('hidden');
+  document.getElementById('prog-detail-view').classList.remove('active');
+  document.getElementById('prog-editor').classList.remove('hidden');
+}
+function cancelEdit(){
+  document.getElementById('prog-editor').classList.add('hidden');
+  if(editProgramId&&detailProgId) showProgDetail(detailProgId);
+  else showProgList();
+}
+function addSegment(type){
+  const last=editSegments[editSegments.length-1];
+  editSegments.push({type,target_temp:last?last.target_temp:(displayUnit==='F'?1475:802),rate_per_min:type==='ramp'?10:0,duration_min:type==='soak'?30:0});
+  renderSegmentEditor();
+}
+function removeSegment(i){editSegments.splice(i,1);renderSegmentEditor();}
+function changeSegType(i,type){editSegments[i].type=type;renderSegmentEditor();}
+function renderSegmentEditor(){
+  const unit=unitSuffix(),el=document.getElementById('pe-segs');
+  if(!editSegments.length){el.innerHTML='<div class="text-muted">Add a ramp or soak segment above.</div>';return;}
+  el.innerHTML=editSegments.map((s,i)=>{
+    const isContinuous = s.type==='soak' && s.duration_min===-1;
+    return `
+    <div class="seg-card">
+      <div class="seg-header">
+        <div class="seg-num-big">${i+1}</div>
+        <span class="seg-type-tag ${s.type}">${s.type.toUpperCase()}</span>
+        <div style="flex:1;"></div>
+        <select onchange="changeSegType(${i},this.value)"
+          style="width:auto;flex:unset;font-size:15px;padding:6px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+          <option value="ramp" ${s.type==='ramp'?'selected':''}>Ramp</option>
+          <option value="soak" ${s.type==='soak'?'selected':''}>Soak</option>
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="removeSegment(${i})">✕</button>
+      </div>
+      <div class="seg-fields">
+        <div class="seg-field">
+          <label>Target (${unit})</label>
+          <div class="np-field" onclick="openNumpad('seg-${i}-target_temp','Target Temp (${unit})',${s.target_temp},false)">
+            <span class="np-field-val">${s.target_temp}${unit}</span>
+            <span class="np-field-icon">⌨</span>
+          </div>
+        </div>
+        ${s.type==='ramp'
+          ?`<div class="seg-field">
+              <label>Rate (${unit}/min)</label>
+              <div class="np-field" onclick="openNumpad('seg-${i}-rate_per_min','Ramp Rate (${unit}/min)',${s.rate_per_min},true)">
+                <span class="np-field-val">${s.rate_per_min}${unit}/min</span>
+                <span class="np-field-icon">⌨</span>
+              </div>
+            </div>`
+          :`<div class="seg-field" style="grid-column:span 1;">
+              <label>Hold Time</label>
+              <div class="toggle-row" style="padding:12px 14px;margin-bottom:0;border-radius:8px;background:var(--panel2);">  
+                <div>
+                  <div class="toggle-label" style="font-size:15px;">Continuous</div>
+                  <div class="toggle-sub">Hold forever until aborted</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" ${isContinuous?'checked':''} onchange="toggleSoakContinuous(${i},this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              ${isContinuous?'':`
+              <div class="np-field" style="margin-top:8px;" onclick="openNumpad('seg-${i}-duration_min','Hold Time (minutes)',${s.duration_min},false)">
+                <span class="np-field-val">${s.duration_min} min</span>
+                <span class="np-field-icon">⌨</span>
+              </div>`}
+            </div>`}
+      </div>
+    </div>`}).join('');
+}
+function toggleSoakContinuous(i, checked){
+  editSegments[i].duration_min = checked ? -1 : 30;
+  renderSegmentEditor();
+}
+async function saveProgram(){
+  const name=document.getElementById('pe-name').value.trim();
+  if(!name){showToast('Name required','error');return;}
+  const segs=editSegments.map(s=>({
+    type:s.type,
+    target_temp:displayToC(s.target_temp),
+    rate_per_min:displayUnit==='F'?s.rate_per_min*5/9:s.rate_per_min,
+    duration_min:s.duration_min
+  }));
+  const body={name,description:document.getElementById('pe-desc').value.trim(),segments:segs};
+  const url=editProgramId?`/api/programs/${editProgramId}`:'/api/programs';
+  const meth=editProgramId?'PUT':'POST';
+  const res=await fetch(API+url,{method:meth,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(res.ok){showToast('Saved!','success');cancelEdit();}else showToast('Save failed','error');
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+
+// ── Nice tick algorithm ──────────────────────────────────────────────────────
+// Returns an array of "nice" values covering [lo, hi] with ~targetCount ticks.
+// For temperature: rounds to 25, 50, 100, 200, 500 etc.
+// For time: rounds to 10s, 30s, 1m, 2m, 5m, 10m, 15m, 30m, 1h, 2h etc.
+function niceSteps(lo, hi, targetCount) {
+  if (hi <= lo) return [lo];
+  const range = hi - lo;
+  const rawStep = range / targetCount;
+  // Pick magnitude and nearest nice multiple
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const normalized = rawStep / mag;
+  let nice;
+  if      (normalized < 1.5) nice = 1;
+  else if (normalized < 3.5) nice = 2;
+  else if (normalized < 7.5) nice = 5;
+  else                       nice = 10;
+  const step = nice * mag;
+  const start = Math.ceil(lo / step) * step;
+  const ticks = [];
+  for (let v = start; v <= hi + step * 0.001; v += step) {
+    ticks.push(parseFloat(v.toFixed(10))); // avoid floating-point drift
+  }
+  return ticks;
+}
+
+// Nice time ticks — uses human-friendly intervals (seconds/minutes/hours)
+function niceTimeTicks(lo, hi, targetCount) {
+  const range = hi - lo; // seconds
+  const rawStep = range / targetCount;
+  // Candidate intervals in seconds
+  const candidates = [1,2,5,10,15,30,60,120,300,600,900,1800,3600,7200,10800,21600,43200,86400];
+  let step = candidates[candidates.length - 1];
+  for (let i = 0; i < candidates.length; i++) {
+    if (candidates[i] >= rawStep) { step = candidates[i]; break; }
+  }
+  const start = Math.ceil(lo / step) * step;
+  const ticks = [];
+  for (let v = start; v <= hi + step * 0.001; v += step) {
+    ticks.push(Math.round(v));
+  }
+  return ticks;
+}
+
+function formatTimeLabel(ts) {
+  const d = new Date(ts * 1000);
+  const h = d.getHours().toString().padStart(2,'0');
+  const m = d.getMinutes().toString().padStart(2,'0');
+  const s = d.getSeconds();
+  return s === 0 ? `${h}:${m}` : `${h}:${m}:${s.toString().padStart(2,'0')}`;
+}
+
+function formatTempLabel(v) {
+  // Show integer if it is one, otherwise 1 decimal
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+// ── Canvas setup & resize ────────────────────────────────────────────────────
+function chartCanvasSize() {
+  const canvas = document.getElementById('chart-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth || 320;
+  const h = Math.min(Math.max(Math.round(w * 0.52), 220), 360);
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.height = h + 'px';
+  return { w, h, dpr };
+}
+
+// ── Viewport helpers ─────────────────────────────────────────────────────────
+const CHART_PAD = { top: 14, right: 16, bottom: 40, left: 62 };
+
+function chartDataToCanvas(ts, temp, w, h) {
+  const P = CHART_PAD, pw = w - P.left - P.right, ph = h - P.top - P.bottom;
+  const xSpan = chartView.xMax - chartView.xMin || 1;
+  const ySpan = chartView.yMax - chartView.yMin || 1;
+  return {
+    x: P.left + (ts - chartView.xMin) / xSpan * pw,
+    y: P.top  + (1 - (temp - chartView.yMin) / ySpan) * ph
+  };
+}
+
+function chartCanvasToData(cx, cy, w, h) {
+  const P = CHART_PAD, pw = w - P.left - P.right, ph = h - P.top - P.bottom;
+  const xSpan = chartView.xMax - chartView.xMin || 1;
+  const ySpan = chartView.yMax - chartView.yMin || 1;
+  return {
+    ts:   chartView.xMin + (cx - P.left) / pw * xSpan,
+    temp: chartView.yMin + (1 - (cy - P.top) / ph) * ySpan
+  };
+}
+
+// ── View management ───────────────────────────────────────────────────────────
+
+// Returns the newest log entry's {ts, temp, setpoint} in display units, or null
+function chartNewest() {
+  if (!chartAllLogs.length) return null;
+  const l = chartAllLogs[chartAllLogs.length - 1];
+  return {
+    ts:  l.ts,
+    temp: parseFloat(cToDisplay(l.temp)),
+    sp:   parseFloat(cToDisplay(l.setpoint)),
+  };
+}
+
+// Set up a live view centred on the newest point, preserving current x/y spans
+// if the view is already initialised, otherwise using sensible defaults.
+function chartApplyLiveView() {
+  const n = chartNewest();
+  const now = n ? n.ts : Date.now() / 1000;
+
+  // Preserve existing spans if we have them, else use defaults
+  const xSpan = (chartView.xMax > chartView.xMin)
+    ? (chartView.xMax - chartView.xMin)
+    : 1800;                          // default: show 30 min
+  const ySpan = (chartView.yMax > chartView.yMin)
+    ? (chartView.yMax - chartView.yMin)
+    : 200;                           // default: 200° window
+
+  // Place the newest point 80% of the way across so there's space on the right
+  chartView.xMax = now + xSpan * 0.20;
+  chartView.xMin = chartView.xMax - xSpan;
+
+  // Centre Y on the current temperature
+  if (n && !isNaN(n.temp)) {
+    chartView.yMin = n.temp - ySpan * 0.5;
+    chartView.yMax = n.temp + ySpan * 0.5;
+  }
+}
+
+// Fit all data on screen
+function chartFitAll() {
+  const logs = chartAllLogs;
+  if (!logs || !logs.length) {
+    const now = Date.now() / 1000;
+    chartView = { xMin: now - 3600, xMax: now + 60, yMin: 50, yMax: 500 };
+    return;
+  }
+  const temps = logs.map(l => parseFloat(cToDisplay(l.temp))).filter(v => !isNaN(v));
+  const sps   = logs.map(l => parseFloat(cToDisplay(l.setpoint))).filter(v => !isNaN(v));
+  const allV  = [...temps, ...sps];
+  const tsMin = logs[0].ts, tsMax = logs[logs.length - 1].ts;
+  const tSpan = Math.max(tsMax - tsMin, 60);
+  const vMin  = Math.min(...allV), vMax = Math.max(...allV);
+  const vSpan = Math.max(vMax - vMin, 50);
+  chartView = {
+    xMin: tsMin - tSpan * 0.02,
+    xMax: tsMax + tSpan * 0.05,
+    yMin: vMin  - vSpan * 0.08,
+    yMax: vMax  + vSpan * 0.12,
+  };
+}
+
+// Called every refresh cycle to advance the live view
+function chartAdvanceLive() {
+  if (chartMode !== 'live' || !chartAllLogs.length) return;
+  const n = chartNewest();
+  if (!n) return;
+  const xSpan = chartView.xMax - chartView.xMin;
+  // Reposition: newest point should stay at 80% across
+  const targetXMax = n.ts + xSpan * 0.20;
+  chartView.xMax = targetXMax;
+  chartView.xMin = targetXMax - xSpan;
+  // Keep Y centred on current temp (soft — only nudge if temp is outside middle 60%)
+  const yMid  = (chartView.yMin + chartView.yMax) / 2;
+  const ySpan = chartView.yMax - chartView.yMin;
+  const yDiff = n.temp - yMid;
+  if (Math.abs(yDiff) > ySpan * 0.30) {
+    // Slide Y so current temp is centred again
+    chartView.yMin = n.temp - ySpan * 0.5;
+    chartView.yMax = n.temp + ySpan * 0.5;
+  }
+}
+
+// ── Main draw ────────────────────────────────────────────────────────────────
+function chartDraw() {
+  const canvas = document.getElementById('chart-canvas');
+  if (!canvas) return;
+  const { w, h, dpr } = chartCanvasSize();
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const P = CHART_PAD;
+  const pw = w - P.left - P.right;
+  const ph = h - P.top  - P.bottom;
+
+  // Background
+  ctx.fillStyle = '#111214';
+  ctx.fillRect(0, 0, w, h);
+
+  const logs = chartAllLogs;
+  if (!logs || !logs.length) {
+    ctx.fillStyle = '#8892a0';
+    ctx.font = '15px Barlow,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(simMode ? 'No sim data yet — start heating first' : 'No data yet', w / 2, h / 2);
+    return;
+  }
+
+  // Clip to plot area
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(P.left, P.top, pw, ph);
+  ctx.clip();
+
+  // ── Grid lines + labels ──
+  ctx.restore(); // we'll draw labels outside clip
+
+  // Y-axis (temperature) ticks
+  const yTicks = niceSteps(chartView.yMin, chartView.yMax, 6);
+  ctx.font = '11px Share Tech Mono,monospace';
+  ctx.textAlign = 'right';
+  yTicks.forEach(v => {
+    const { y } = chartDataToCanvas(chartView.xMin, v, w, h);
+    if (y < P.top - 4 || y > P.top + ph + 4) return;
+    ctx.strokeStyle = '#1e2028';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(P.left, y); ctx.lineTo(w - P.right, y); ctx.stroke();
+    ctx.fillStyle = '#606878';
+    ctx.fillText(formatTempLabel(v) + unitSuffix(), P.left - 6, y + 4);
+  });
+
+  // X-axis (time) ticks — target ~5-7 ticks
+  const xTicks = niceTimeTicks(chartView.xMin, chartView.xMax, 6);
+  ctx.textAlign = 'center';
+  xTicks.forEach(ts => {
+    const { x } = chartDataToCanvas(ts, chartView.yMin, w, h);
+    if (x < P.left - 2 || x > w - P.right + 2) return;
+    ctx.strokeStyle = '#1e2028';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, P.top); ctx.lineTo(x, P.top + ph); ctx.stroke();
+    ctx.fillStyle = '#606878';
+    ctx.fillText(formatTimeLabel(ts), x, P.top + ph + 14);
+  });
+
+  // ── Plot border ──
+  ctx.strokeStyle = '#252830';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(P.left, P.top, pw, ph);
+
+  // ── Clip data lines ──
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(P.left, P.top, pw, ph);
+  ctx.clip();
+
+  // Build visible points (subsample if very dense — max 800 pts across view)
+  // Always keep points where door_open changes so transitions are never lost.
+  const visLogs = logs.filter(l => l.ts >= chartView.xMin - 1 && l.ts <= chartView.xMax + 1);
+  const step = Math.max(1, Math.floor(visLogs.length / 800));
+  const sampled = step === 1 ? visLogs : visLogs.filter((l, i) => {
+    if (i % step === 0) return true;
+    // Always keep door transition points
+    const prev = visLogs[i - 1];
+    if (prev && (l.door_open || 0) !== (prev.door_open || 0)) return true;
+    return false;
+  });
+
+  function drawSegments(colorFn, dash) {
+    // Draw the temp trace in color-coded segments based on door state.
+    // Each segment runs until the color changes, then a new segment starts.
+    // We connect segments by including the boundary point in both so there's no gap.
+    if (sampled.length < 2) return;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(dash || []);
+
+    let segStart = 0;
+    for (let i = 1; i <= sampled.length; i++) {
+      const atEnd = i === sampled.length;
+      const colorChanged = !atEnd && colorFn(sampled[i]) !== colorFn(sampled[i - 1]);
+      if (atEnd || colorChanged) {
+        const seg = sampled.slice(segStart, i);
+        if (seg.length >= 2) {
+          ctx.beginPath();
+          // Color this segment by its LAST point — so the color switch
+          // takes effect at the transition point, not one sample late.
+          ctx.strokeStyle = colorFn(seg[seg.length - 1]);
+          let first = true;
+          seg.forEach(l => {
+            const v = parseFloat(cToDisplay(l.temp));
+            if (isNaN(v)) return;
+            const { x, y } = chartDataToCanvas(l.ts, v, w, h);
+            first ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            first = false;
+          });
+          ctx.stroke();
+        }
+        segStart = i - 1; // overlap by one so segments connect without gaps
+      }
+    }
+    ctx.setLineDash([]);
+  }
+
+  function drawLine(getter, color, dash) {
+    // Used for setpoint — always one color
+    if (sampled.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(dash || []);
+    let first = true;
+    sampled.forEach(l => {
+      const v = parseFloat(cToDisplay(getter(l)));
+      if (isNaN(v)) return;
+      const { x, y } = chartDataToCanvas(l.ts, v, w, h);
+      first ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      first = false;
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawLine(l => l.setpoint, '#4da6ff', [6, 4]);
+
+  // Draw temp trace: orange when door closed, blue when door open.
+  // door_open=1/true = door open, door_open=0/false = door closed.
+  drawSegments(l => (l.door_open || 0) ? '#4da6ff' : '#ff6b1a');
+
+  // ── Door event markers ──
+  // Transition 0→1: door just opened. Transition 1→0: door just closed.
+  ctx.font = 'bold 10px Share Tech Mono,monospace';
+  ctx.textAlign = 'center';
+  for (let i = 1; i < sampled.length; i++) {
+    const prev = (sampled[i - 1].door_open || 0);
+    const curr = (sampled[i].door_open || 0);
+    if (prev === curr) continue;
+    const isOpen = curr === 1;
+    const ts = sampled[i].ts;
+    const { x } = chartDataToCanvas(ts, 0, w, h);
+    if (x < P.left || x > w - P.right) continue;
+    const col = isOpen ? '#4da6ff' : '#ff6b1a';
+    ctx.save();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x, P.top); ctx.lineTo(x, P.top + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col;
+    ctx.save();
+    ctx.translate(x + 4, P.top + 6);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillText(isOpen ? 'DOOR OPEN' : 'DOOR CLOSED', 0, 0);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // ── Crosshair ──
+  if (chartMouseX !== null && chartMouseY !== null) {
+    const mx = chartMouseX, my = chartMouseY;
+    if (mx >= P.left && mx <= w - P.right && my >= P.top && my <= P.top + ph) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(mx, P.top); ctx.lineTo(mx, P.top + ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(P.left, my); ctx.lineTo(w - P.right, my); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Find nearest data point
+      const { ts: hoverTs } = chartCanvasToData(mx, my, w, h);
+      let nearest = null, nearDist = Infinity;
+      sampled.forEach(l => { const d = Math.abs(l.ts - hoverTs); if (d < nearDist) { nearDist = d; nearest = l; } });
+      if (nearest) {
+        const t = parseFloat(cToDisplay(nearest.temp));
+        const s = parseFloat(cToDisplay(nearest.setpoint));
+        const timeStr = formatTimeLabel(nearest.ts);
+        document.getElementById('chart-xhair-info').textContent =
+          `${timeStr}  │  Temp: ${t.toFixed(1)}${unitSuffix()}  │  Setpoint: ${s.toFixed(1)}${unitSuffix()}`;
+        // Dot on temp line
+        const { x: dx, y: dy } = chartDataToCanvas(nearest.ts, t, w, h);
+        ctx.beginPath();
+        ctx.arc(dx, dy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff6b1a';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    } else {
+      document.getElementById('chart-xhair-info').textContent = '\u00a0';
+    }
+  }
+
+  ctx.restore();
+}
+
+// ── Session management ────────────────────────────────────────────────────────
+
+async function chartLoadSessions() {
+  const sessions = await apiGet('/api/sessions');
+  if (!sessions) return;
+  chartSessions = sessions;
+  const sel = document.getElementById('chart-session-select');
+  const prev = sel.value;
+  // Rebuild options
+  sel.innerHTML = '<option value="current">● Current Session</option>';
+  sessions.forEach(s => {
+    if (!s.ended_at) return; // skip the open/current session (already shown as "Current")
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label;
+    sel.appendChild(opt);
+  });
+  // Restore selection if it still exists
+  const exists = Array.from(sel.options).some(o => o.value === prev);
+  sel.value = exists ? prev : 'current';
+  chartOnSessionChange(false); // update delete-btn visibility without reloading
+}
+
+function chartOnSessionChange(reload = true) {
+  const sel = document.getElementById('chart-session-select');
+  const delBtn = document.getElementById('chart-session-del-btn');
+  const isCurrent = sel.value === 'current';
+  chartViewingSessionId = isCurrent ? null : parseInt(sel.value);
+  if (delBtn) delBtn.style.display = isCurrent ? 'none' : 'flex';
+  // Past sessions are static — force review mode
+  if (!isCurrent) {
+    chartMode = 'review';
+  } else {
+    chartMode = 'live';
+  }
+  chartUpdateModeBtns();
+  if (reload) {
+    chartInitialized = false;
+    loadChartData();
+  }
+}
+
+async function chartNewSession() {
+  if (!confirm('Start a new session? The current chart will be saved and a fresh one will open.')) return;
+  const res = await apiPost('/api/sessions/new');
+  if (res && res.ok) {
+    showToast('New session started', 'success');
+    chartViewingSessionId = null;
+    chartMode = 'live';
+    chartInitialized = false;
+    chartUpdateModeBtns();
+    await chartLoadSessions();
+    const sel = document.getElementById('chart-session-select');
+    sel.value = 'current';
+    const delBtn = document.getElementById('chart-session-del-btn');
+    if (delBtn) delBtn.style.display = 'none';
+    loadChartData();
+  }
+}
+
+async function chartDeleteSession() {
+  const sel = document.getElementById('chart-session-select');
+  if (sel.value === 'current') return;
+  const label = sel.options[sel.selectedIndex].textContent;
+  if (!confirm(`Delete session "${label.trim()}" and all its data? This cannot be undone.`)) return;
+  const id = parseInt(sel.value);
+  try {
+    const r = await fetch(API + `/api/sessions/${id}`, { method: 'DELETE' });
+    const data = await r.json();
+    if (data.ok) {
+      showToast('Session deleted', 'success');
+      chartViewingSessionId = null;
+      chartMode = 'live';
+      chartInitialized = false;
+      chartUpdateModeBtns();
+      await chartLoadSessions();
+      const sel2 = document.getElementById('chart-session-select');
+      sel2.value = 'current';
+      const delBtn = document.getElementById('chart-session-del-btn');
+      if (delBtn) delBtn.style.display = 'none';
+      loadChartData();
+    } else {
+      showToast(data.error || 'Delete failed', 'error');
+    }
+  } catch(e) { showToast('Connection error', 'error'); }
+}
+
+// ── Session Manager ───────────────────────────────────────────────────────────
+let smSelectedIds = new Set();
+
+async function openSessionManager(){
+  document.getElementById('session-manager').classList.remove('hidden');
+  await smRefresh();
+}
+function closeSessionManager(){
+  document.getElementById('session-manager').classList.add('hidden');
+}
+
+async function smRefresh(){
+  // Load stats
+  const stats = await apiGet('/api/sessions/stats');
+  if(stats){
+    const oldest = stats.oldest_session_ts
+      ? new Date(stats.oldest_session_ts*1000).toLocaleDateString()
+      : '—';
+    document.getElementById('session-stats').textContent =
+      `${stats.total_sessions} saved sessions  ·  ${stats.total_log_rows.toLocaleString()} log rows  ·  oldest: ${oldest}`;
+  }
+  // Load session list
+  const sessions = await apiGet('/api/sessions');
+  if(!sessions) return;
+  smSelectedIds.clear();
+  const el = document.getElementById('sm-session-list');
+  const closed = sessions.filter(s => s.ended_at);
+  if(!closed.length){
+    el.innerHTML = '<div style="padding:16px;color:var(--text2);text-align:center;font-size:14px;">No saved sessions yet.</div>';
+    smUpdateDeleteBtn();
+    return;
+  }
+  el.innerHTML = closed.map(s => {
+    const start = new Date(s.started_at*1000).toLocaleString();
+    const dur   = s.ended_at ? _smDuration(s.ended_at - s.started_at) : '';
+    const locked = s.protected;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+      border-bottom:1px solid var(--border);background:${locked?'rgba(255,200,0,.05)':'transparent'};">
+      <input type="checkbox" data-id="${s.id}" ${locked?'disabled title="Protected — unlock to delete"':''}
+        onchange="smToggle(${s.id},this.checked)"
+        style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;cursor:${locked?'not-allowed':'pointer'};">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.label}</div>
+        <div style="color:var(--text2);font-family:var(--mono);font-size:12px;">${start}${dur?' · '+dur:''}</div>
+      </div>
+      <div ontouchstart="event.preventDefault();smToggleProtect(${s.id},${locked})"
+           onclick="smToggleProtect(${s.id},${locked})"
+           title="${locked?'Protected — tap to unlock':'Tap to protect from deletion'}"
+           style="font-size:22px;cursor:pointer;padding:4px 6px;border-radius:6px;
+                  color:${locked?'var(--yellow)':'var(--border)'};
+                  background:${locked?'rgba(255,200,0,.12)':'transparent'};
+                  transition:all .15s;">
+        ${locked?'🔒':'🔓'}
+      </div>
+    </div>`;
+  }).join('');
+  smUpdateDeleteBtn();
+}
+
+function _smDuration(secs){
+  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60);
+  return h>0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function smToggle(id, checked){
+  if(checked) smSelectedIds.add(id); else smSelectedIds.delete(id);
+  smUpdateDeleteBtn();
+}
+
+function smUpdateDeleteBtn(){
+  const n = smSelectedIds.size;
+  document.getElementById('sm-selected-count').textContent = `${n} selected`;
+  const btn = document.getElementById('sm-delete-btn');
+  btn.textContent = n > 0 ? `Delete ${n} Session${n>1?'s':''}` : 'Delete Selected';
+  btn.disabled = n === 0;
+}
+
+async function smToggleProtect(id, currentlyProtected){
+  const newState = !currentlyProtected;
+  const r = await fetch(`${API}/api/sessions/${id}`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({protected: newState})
+  });
+  const data = await r.json();
+  if(data.ok){
+    showToast(newState ? '🔒 Session protected' : '🔓 Protection removed', 'success');
+    await smRefresh();
+  } else {
+    showToast('Failed to update session','error');
+  }
+}
+
+function smSelectAll(){
+  document.querySelectorAll('#sm-session-list input[type=checkbox]:not([disabled])').forEach(cb=>{
+    cb.checked=true; smSelectedIds.add(parseInt(cb.dataset.id));
+  });
+  smUpdateDeleteBtn();
+}
+function smSelectNone(){
+  document.querySelectorAll('#sm-session-list input[type=checkbox]').forEach(cb=>{
+    cb.checked=false;
+  });
+  smSelectedIds.clear();
+  smUpdateDeleteBtn();
+}
+function smSelectOlderThan(days){
+  const cutoff = Date.now()/1000 - days*86400;
+  document.querySelectorAll('#sm-session-list input[type=checkbox]:not([disabled])').forEach(cb=>{
+    const s = chartSessions.find(x=>x.id===parseInt(cb.dataset.id));
+    if(s && s.started_at < cutoff){
+      cb.checked=true; smSelectedIds.add(parseInt(cb.dataset.id));
+    }
+  });
+  smUpdateDeleteBtn();
+}
+
+async function smDeleteSelected(){
+  if(smSelectedIds.size===0) return;
+  const n = smSelectedIds.size;
+  if(!confirm(`Permanently delete ${n} session${n>1?'s':''} and all their data? This cannot be undone.`)) return;
+  const res = await apiPost('/api/sessions/bulk_delete', {ids: Array.from(smSelectedIds)});
+  if(res && res.ok){
+    showToast(`Deleted ${res.deleted} session${res.deleted!==1?'s':''}`, 'success');
+    await smRefresh();
+    await chartLoadSessions();
+    // If the currently viewed session was deleted, go back to current
+    if(chartViewingSessionId && smSelectedIds.has(chartViewingSessionId)){
+      chartViewingSessionId = null;
+      chartMode = 'live';
+      chartInitialized = false;
+      chartUpdateModeBtns();
+      loadChartData();
+    }
+  } else {
+    showToast(res&&res.error||'Delete failed','error');
+  }
+}
+
+async function smPurgeByAge(){
+  if(!confirm(`Delete all sessions older than ${smPurgeDays} days and their data? This cannot be undone.`)) return;
+  const res = await apiPost('/api/sessions/purge', {days: smPurgeDays});
+  if(res && res.ok){
+    showToast(`Purged sessions older than ${smPurgeDays} days`, 'success');
+    await smRefresh();
+    await chartLoadSessions();
+  } else {
+    showToast('Purge failed','error');
+  }
+}
+
+// ── Data loading ─────────────────────────────────────────────────────────────
+async function loadChartData() {
+  let logs;
+  if (simMode && chartViewingSessionId === null) {
+    logs = simLog.slice();
+  } else {
+    const sessionParam = chartViewingSessionId !== null
+      ? `&session_id=${chartViewingSessionId}`
+      : '';
+    logs = await apiGet(`/api/log?limit=10000${sessionParam}`);
+  }
+  if (!logs) return;
+  chartAllLogs = logs;
+
+  if (!chartInitialized) {
+    // First load — set up the appropriate view for the current mode
+    if (chartMode === 'fit') {
+      chartFitAll();
+    } else {
+      chartApplyLiveView();   // works for both 'live' and initial 'review'
+    }
+    chartInitialized = true;
+  } else if (chartMode === 'live') {
+    chartAdvanceLive();
+  } else if (chartMode === 'fit') {
+    chartFitAll();
+  }
+  // 'review' mode: data refreshes but view does not move
+
+  chartDraw();
+}
+
+function startChartRefresh() {
+  stopChartRefresh();
+  loadChartData();
+  chartRefreshTimer = setInterval(() => {
+    if (document.getElementById('page-chart').classList.contains('active')) {
+      loadChartData();
+    }
+  }, 5000);
+}
+
+function stopChartRefresh() {
+  if (chartRefreshTimer) { clearInterval(chartRefreshTimer); chartRefreshTimer = null; }
+}
+
+function chartSetMode(mode) {
+  chartMode = mode;
+  chartUpdateModeBtns();
+  if (mode === 'live') {
+    chartApplyLiveView();
+    chartDraw();
+  } else if (mode === 'fit') {
+    chartFitAll();
+    chartDraw();
+  }
+  // 'review' — just unlocks; view stays where it is
+}
+
+function chartUpdateModeBtns() {
+  const modes = { live: 'chart-btn-live', review: 'chart-btn-review', fit: 'chart-btn-fit' };
+  Object.entries(modes).forEach(([m, id]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const active = m === chartMode;
+    btn.style.color       = active ? (m === 'live' ? 'var(--green)' : 'var(--accent)') : '';
+    btn.style.borderColor = active ? (m === 'live' ? 'var(--green)' : 'var(--accent)') : '';
+  });
+}
+
+// Keep backward-compatible aliases used by session code
+function updateChartFollowBtn() { chartUpdateModeBtns(); }
+
+// ── Pointer / touch interaction ──────────────────────────────────────────────
+function chartInitInteraction() {
+  const canvas = document.getElementById('chart-canvas');
+  if (!canvas || canvas._chartBound) return;
+  canvas._chartBound = true;
+
+  // Single finger tap on canvas → place crosshair at that position
+  // touchstart for instant response; preventDefault stops the page from scrolling
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    chartMouseX = e.touches[0].clientX - r.left;
+    chartMouseY = e.touches[0].clientY - r.top;
+    chartDraw();
+  }, { passive: false });
+}
+
+// ── Button-driven pan & zoom ──────────────────────────────────────────────────
+
+// Pan horizontally. In live mode, switches to review (user is navigating away).
+function chartPanStep(frac) {
+  chartMode = 'review';
+  chartUpdateModeBtns();
+  const span = chartView.xMax - chartView.xMin;
+  chartView.xMin += span * frac;
+  chartView.xMax += span * frac;
+  chartDraw();
+}
+
+// Zoom X.
+// Live mode: keep the newest point anchored at 80% and expand/contract around it.
+// Review/Fit: zoom around the centre of the current view; switch to review.
+function chartZoomX(factor) {
+  if (chartMode === 'live') {
+    const n = chartNewest();
+    const anchor = n ? n.ts : chartView.xMax;
+    const newSpan = (chartView.xMax - chartView.xMin) * factor;
+    if (newSpan < 10) return;
+    // Keep anchor at 80% position
+    chartView.xMax = anchor + newSpan * 0.20;
+    chartView.xMin = chartView.xMax - newSpan;
+  } else {
+    chartMode = 'review';
+    chartUpdateModeBtns();
+    const mid  = (chartView.xMin + chartView.xMax) / 2;
+    const half = (chartView.xMax - chartView.xMin) / 2 * factor;
+    if (half * 2 < 10) return;
+    chartView.xMin = mid - half;
+    chartView.xMax = mid + half;
+  }
+  chartDraw();
+}
+
+// Zoom Y.
+// Live mode: keep the current temperature centred and expand/contract around it.
+// Review/Fit: zoom around the centre of the current view; switch to review.
+function chartZoomY(factor) {
+  if (chartMode === 'live') {
+    const n = chartNewest();
+    const anchor = (n && !isNaN(n.temp)) ? n.temp : (chartView.yMin + chartView.yMax) / 2;
+    const newSpan = (chartView.yMax - chartView.yMin) * factor;
+    chartView.yMin = anchor - newSpan * 0.5;
+    chartView.yMax = anchor + newSpan * 0.5;
+  } else {
+    chartMode = 'review';
+    chartUpdateModeBtns();
+    const mid  = (chartView.yMin + chartView.yMax) / 2;
+    const half = (chartView.yMax - chartView.yMin) / 2 * factor;
+    chartView.yMin = mid - half;
+    chartView.yMax = mid + half;
+  }
+  chartDraw();
+}
+
+// Pan Y — always switches to review
+function chartPanY(frac) {
+  chartMode = 'review';
+  chartUpdateModeBtns();
+  const span = chartView.yMax - chartView.yMin;
+  chartView.yMin += span * frac;
+  chartView.yMax += span * frac;
+  chartDraw();
+}
+
+// Clear the crosshair
+function chartClearCrosshair() {
+  chartMouseX = null;
+  chartMouseY = null;
+  const el = document.getElementById('chart-xhair-info');
+  if (el) el.textContent = 'TAP CHART TO READ VALUES';
+  chartDraw();
+}
+
+// ── Status bar (temp / setpoint / output) ─────────────────────────────────────
+function chartUpdateStatusBar(s) {
+  const tempEl = document.getElementById('cstat-temp');
+  const spEl   = document.getElementById('cstat-sp');
+  const outEl  = document.getElementById('cstat-out');
+  if (!tempEl || !s) return;
+  const t = parseFloat(cToDisplay(s.temp   ?? 0));
+  const sp = parseFloat(cToDisplay(s.setpoint ?? 0));
+  const o  = parseFloat(s.pid_output ?? 0);
+  tempEl.textContent = isNaN(t)  ? '—' : t.toFixed(1)  + unitSuffix();
+  spEl.textContent   = isNaN(sp) ? '—' : sp.toFixed(1) + unitSuffix();
+  outEl.textContent  = isNaN(o)  ? '—' : o.toFixed(1)  + '%';
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function loadSettings(){
+  const s=await apiGet('/api/settings');if(!s) return;
+  displayUnit=s.temp_unit||'F';
+  document.getElementById('unit-select').value=displayUnit;
+  maxTempF=parseFloat(s.max_temp_f||'2200');
+  document.getElementById('max-temp-display').textContent=maxTempDisplay()+unitSuffix();
+  showHelpBtns=s.show_help!==false&&s.show_help!=='false';
+  document.getElementById('help-toggle').checked=showHelpBtns;
+  applyHelpVisibility();
+  updateUnitLabels();
+  // Load calibration offset from server
+  const savedOffset=parseFloat(s.temp_offset_c||'0');
+  localStorage.setItem('tempOffsetC', savedOffset.toString());
+  const offsetDisp=displayUnit==='F'?(savedOffset*9/5).toFixed(1)+'°F':savedOffset.toFixed(2)+'°C';
+  const odEl=document.getElementById('temp-offset-display');
+  if(odEl) odEl.textContent=offsetDisp;
+  // Feature toggles
+  const approachEl = document.getElementById('toggle-approach');
+  const recoveryEl = document.getElementById('toggle-door-recovery');
+  if(approachEl) approachEl.checked = s.approach_control_enabled !== '0';
+  if(recoveryEl) recoveryEl.checked = s.door_recovery_enabled !== '0';
+  // Cruise multiplier
+  const mult = parseFloat(s.autotune_cruise_multiplier || '1.0');
+  const multEl = document.getElementById('cruise-mult-display');
+  if(multEl) multEl.textContent = mult.toFixed(2) + '×';
+  // Relay multiplier
+  const relayMult = parseFloat(s.autotune_relay_multiplier || '1.0');
+  const relayMultEl = document.getElementById('relay-mult-display');
+  if(relayMultEl) relayMultEl.textContent = relayMult.toFixed(2) + '×';
+  // Seed saved state so dirty detection works from first change
+  _atMultSaved = { cruise: mult, relay: relayMult };
+  _atMultMarkClean();
+  // Load approach zones
+  loadApproachZones();
+  loadDoorRecoveryZones();
+}
+
+async function saveFeatureToggle(key, val){
+  await apiPost('/api/settings', {[key]: val ? '1' : '0'});
+  showToast((val ? 'Enabled' : 'Disabled') + ' — takes effect immediately', 'success');
+}
+
+// Tracks the last-saved values so we can detect unsaved changes
+let _atMultSaved = { cruise: null, relay: null };
+
+function _atMultMarkDirty() {
+  const btn = document.getElementById('at-mult-save-btn');
+  if (!btn) return;
+  btn.style.background    = 'var(--accent)';
+  btn.style.borderColor   = 'var(--accent)';
+  btn.style.color         = '#fff';
+}
+
+function _atMultMarkClean() {
+  const btn = document.getElementById('at-mult-save-btn');
+  if (!btn) return;
+  btn.style.background    = '';
+  btn.style.borderColor   = '';
+  btn.style.color         = '';
+}
+
+function cruiseMultDisplay(){
+  const el = document.getElementById('cruise-mult-display');
+  if(!el) return '1.0';
+  return el.textContent.replace('×','').trim();
+}
+
+function relayMultDisplay(){
+  const el = document.getElementById('relay-mult-display');
+  if(!el) return '1.0';
+  return el.textContent.replace('×','').trim();
+}
+
+async function saveAutotuneMultipliers(){
+  const cruise = Math.max(0.1, parseFloat(cruiseMultDisplay()) || 1.0);
+  const relay  = Math.max(0.1, parseFloat(relayMultDisplay())  || 1.0);
+  const res = await apiPost('/api/settings', {
+    autotune_cruise_multiplier: cruise.toFixed(2),
+    autotune_relay_multiplier:  relay.toFixed(2),
+  });
+  if(res && res.ok){
+    _atMultSaved = { cruise, relay };
+    _atMultMarkClean();
+    showToast(`Saved — cruise ${cruise.toFixed(2)}×, relay ${relay.toFixed(2)}×`, 'success');
+  } else {
+    showToast('Save failed', 'error');
+  }
+}
+function onUnitChange(){displayUnit=document.getElementById('unit-select').value;updateUnitLabels();}
+function updateUnitLabels(){
+  document.querySelectorAll('.unit-label').forEach(el=>el.textContent=unitSuffix());
+  document.getElementById('max-temp-display').textContent=maxTempDisplay()+unitSuffix();
+  document.getElementById('sp-tap-display').textContent=cToDisplay(currentSetpointC)+unitSuffix();
+  document.getElementById('at-setpoint-display').textContent=cToDisplay(atSetpointC)+unitSuffix();
+}
+function tempOffsetDisplay(){
+  const offsetC = parseFloat(localStorage.getItem('tempOffsetC')||'0');
+  if(displayUnit==='F') return (offsetC*9/5).toFixed(1)+'°F';
+  return offsetC.toFixed(2)+'°C';
+}
+async function saveTempOffset(){
+  const raw = document.getElementById('temp-offset-display').textContent.replace(/[°FC]/g,'');
+  let offsetC = parseFloat(raw)||0;
+  if(displayUnit==='F') offsetC = offsetC*5/9;
+  localStorage.setItem('tempOffsetC', offsetC.toString());
+  await apiPost('/api/settings',{temp_offset_c: offsetC});
+  showToast('Calibration saved','success');
+}
+async function saveSettings(){
+  const res=await apiPost('/api/settings',{temp_unit:displayUnit,max_temp_f:maxTempF,show_help:showHelpBtns});
+  if(res) showToast('Settings saved','success');
+}
+function onHelpToggle(on){showHelpBtns=on;applyHelpVisibility();saveSettings();}
+function applyHelpVisibility(){document.querySelectorAll('.help-btn').forEach(b=>b.style.display=showHelpBtns?'':'none');}
+
+// ── Help ──────────────────────────────────────────────────────────────────────
+const helpContent={
+  live:{title:'Live Indicator',body:'Green dot = browser receiving live data. "Reconnecting..." means connection lost — it retries automatically. The controller keeps running even if the display disconnects.'},
+  cj:{title:'Cold Junction',body:'The MAX31856 chip measures the temperature at its own terminals to correct the thermocouple reading. Typically room temperature. Unusual values mean the chip may be near a heat source.'},
+  output:{title:'Heater Output %',body:'Percentage of time the element is powered per duty cycle. 100% = full power. 0% = off. The PID controller adjusts this automatically to hold your setpoint.'},
+  setpoint:{title:'Manual Setpoint',body:'Target temperature for the oven to hold. Tap to enter via number pad. If a program is running, it controls the setpoint automatically.'},
+  contactor:{title:'Contactor',body:'Heavy-duty relay connecting AC power to the element. Green = power flowing. Red = isolated. Energizes on START, de-energizes on STOP, E-Stop, or fault.'},
+  sim:{title:'Simulation Mode',body:'Test the controller without real hardware. Shows a simulated oven that heats and cools realistically. All controls work against the simulation. Turn OFF before using a real oven.'}
+};
+function showHelp(key){
+  if(!showHelpBtns) return;
+  const h=helpContent[key];if(!h) return;
+  document.getElementById('help-title').textContent=h.title;
+  document.getElementById('help-body').textContent=h.body;
+  document.getElementById('help-overlay').classList.add('open');
+}
+function closeHelp(){document.getElementById('help-overlay').classList.remove('open');}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showTab(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===name)t.classList.add('active');});
+  window.scrollTo(0,0);
+
+  stopChartRefresh();
+  if(name==='programs'){showProgList();loadPrograms();}
+  if(name==='chart'){chartInitInteraction();chartLoadSessions();startChartRefresh();updateChartFollowBtn();}
+  if(name==='pid'){renderZoneTable(lastZones,lastStatus.setpoint||0);updateAutotuneMethodInfo();loadRampTuneZones();loadThermalModel();}
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab)));
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+type;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  loadSettings().then(()=>{ connectSSE(); });
+});
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-chart').classList.contains('active')) {
+    chartDraw();
+  }
+});
+
+// ── Shutdown ──────────────────────────────────────────────────────────────────
+function confirmShutdown(){
+  document.getElementById('shutdown-modal').style.display='flex';
+}
+async function doShutdown(){
+  document.getElementById('shutdown-modal').style.display='none';
+  await apiPost('/api/shutdown');
+  document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0a0a0a;color:#f0f0f0;"><div style="font-size:64px;">⏻</div><div style="font-size:22px;font-weight:700;">Shutting down…</div><div style="color:#888;">Safe to unplug when screen goes dark.</div></div>';
+}
+</script>
+<div id="shutdown-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:300px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">⏻</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px;">Shutdown?</div>
+    <div style="font-size:15px;color:var(--text2);margin-bottom:24px;">The Pi will power down safely.<br>Wait for the screen to go dark before unplugging.</div>
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('shutdown-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="doShutdown()">Shut Down</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
