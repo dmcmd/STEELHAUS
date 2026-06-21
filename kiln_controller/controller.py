@@ -156,7 +156,11 @@ class KilnController:
             if not enable:
                 self._pid.reset()
                 self._approach_pid_engaged = False
-                self._approach_phase = "pid"
+                self._approach_phase       = "pid"
+                self._recovery_active      = False
+                self._door_was_open        = False
+                self._door_open_count      = 0
+                self._door_contactor_retry = 0
                 self._bridge.set_output(duty=0, mosfet=0)
                 self._bridge.set_contactor(False)
             else:
@@ -863,9 +867,6 @@ class KilnController:
                             # Keep PID time tracking current for smooth handoff
                             self._pid._last_time        = now
                             self._pid._last_measurement = current_temp
-                            output = self._pid.update(self._setpoint, current_temp, now)
-                            self._approach_phase = "pid"
-                            logger.info("Door recovery complete — PID resumed")
 
                     else:
                         if self._ramp_rate_ctrl is not None:
@@ -1111,3 +1112,4 @@ class KilnController:
                     )
             else:
                 self._ramp_rate_ctrl = None
+
