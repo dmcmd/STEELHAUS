@@ -87,6 +87,8 @@ class KilnController:
         self._recovery_active:      bool  = False
         self._recovery_boost_pct:   float = 100.0
         self._recovery_resume_offset_c: float = 5.6  # hand off to PID when within this many °C
+        self._recovery_entry_temp:  float = 0.0   # oven temp at door-close
+        self._recovery_has_dropped: bool  = False  # True once oven temp dropped below entry temp
 
         # Approach control phase tracking for UI display
         self._approach_phase:       str  = "pid"   # full | ramp | cruise | pid
@@ -161,6 +163,8 @@ class KilnController:
                 self._door_was_open        = False
                 self._door_open_count      = 0
                 self._door_contactor_retry = 0
+                self._recovery_entry_temp  = 0.0
+                self._recovery_has_dropped = False
                 self._bridge.set_output(duty=0, mosfet=0)
                 self._bridge.set_contactor(False)
             else:
@@ -697,9 +701,11 @@ class KilnController:
                         rp = get_door_recovery_params(self._db, self._setpoint) \
                              if self._door_recovery_enabled else None
                         if rp is not None:
-                            self._pid._integral = self._frozen_integral
+                            self._pid._integral               = self._frozen_integral
                             self._recovery_boost_pct          = rp["boost_pct"]
                             self._recovery_resume_offset_c    = rp["resume_offset_c"]
+                            self._recovery_entry_temp         = current_temp
+                            self._recovery_has_dropped        = False  # wait for drop then rise
                             self._recovery_active             = True
                             logger.info(
                                 f"Door closed after {open_duration:.1f}s — recovery: "
@@ -843,7 +849,19 @@ class KilnController:
                         # setpoint - resume_offset_c, then hand to PID
                         # seeded from thermal model.
                         resume_threshold = self._setpoint - self._recovery_resume_offset_c
-                        if current_temp >= resume_threshold:
+                        # Track whether the oven has dropped below the entry temperature.
+                        # Once it has, we know it bottomed out and any rise means recovery.
+                        if not self._recovery_has_dropped:
+                            if current_temp < self._recovery_entry_temp:
+                                self._recovery_has_dropped = True
+                        # Only check resume threshold once the oven has dropped and
+                        # is now climbing (current temp > last tick's temp).
+                        # This handles all cases: door closed above threshold, at threshold,
+                        # or well below — the oven always has to bottom out and start
+                        # rising before the resume check can fire.
+                        prev_temp = self._pid._last_measurement  # updated each boost tick
+                        oven_is_rising = current_temp > prev_temp
+                        if self._recovery_has_dropped and oven_is_rising and current_temp >= resume_threshold:
                             # Temp is back — end recovery, seed PID from thermal model
                             model_hold = get_hold_estimate(self._db, self._setpoint)
                             steady_state = model_hold if (model_hold and model_hold > 0) \
