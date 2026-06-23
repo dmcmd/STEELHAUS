@@ -29,10 +29,30 @@ apt-get install -y \
   sqlite3 \
   curl \
   chromium-browser \
+  xinit \
+  xorg \
+  matchbox-window-manager \
+  unclutter \
+  x11-xserver-utils \
   2>/dev/null
 apt-get install -y --allow-downgrades cage=0.1.4-4 2>/dev/null || apt-get install -y cage 2>/dev/null
 # Pin cage to prevent auto-upgrade back to 0.2.0
 echo "cage hold" | dpkg --set-selections
+
+# Verify critical packages installed successfully
+MISSING=""
+for pkg in chromium-browser xinit matchbox-window-manager unclutter; do
+  if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+    MISSING="$MISSING $pkg"
+  fi
+done
+if [ -n "$MISSING" ]; then
+  echo "      WARNING: The following packages could not be installed:$MISSING"
+  echo "      The kiosk display may not work. Check your internet connection and try again."
+  ERRORS="$ERRORS\n  - Missing packages:$MISSING"
+else
+  echo "      All required packages installed successfully."
+fi
 echo "      Done."
 
 # ── 2. Install Python packages ────────────────────────────────────────────────
@@ -223,6 +243,19 @@ chown pi:pi "$PROFILE"
 
 echo "      TTY1 auto-login + .bash_profile kiosk launch configured."
 
+# Verify kiosk scripts exist and are executable
+KIOSK_OK=true
+for f in /home/pi/kiln_controller/start_kiosk.sh /home/pi/kiln_controller/xinitrc.sh; do
+  if [ ! -x "$f" ]; then
+    echo "      WARNING: $f missing or not executable"
+    ERRORS="$ERRORS\n  - Kiosk script missing: $f"
+    KIOSK_OK=false
+  fi
+done
+if [ "$KIOSK_OK" = true ]; then
+  echo "      Kiosk scripts verified."
+fi
+
 # Rotate display 90 degrees at the DRM level (works with any Wayland compositor)
 CONFIG=/boot/firmware/config.txt
 if [ -f "$CONFIG" ]; then
@@ -378,5 +411,10 @@ echo ""
 echo "  After reboot: Chromium opens in ~5-8 seconds."
 echo "  No desktop environment ever appears."
 echo "  SSH access still works normally."
+echo ""
+echo "  NOTE: Display is configured to rotate 90 degrees (portrait)."
+echo "  If your display is landscape (normal orientation), edit"
+echo "  /boot/firmware/config.txt and remove the display_rotate=1 line,"
+echo "  then reboot."
 echo "=============================================="
 echo ""
