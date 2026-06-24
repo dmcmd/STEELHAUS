@@ -160,6 +160,7 @@ exec chromium-browser \
   --disable-features=TranslateUI \
   --enable-features=UseOzonePlatform \
   --ozone-platform=wayland \
+  --password-store=basic \
   --check-for-update-interval=31536000 \
   http://localhost:5000
 WRAPPER
@@ -184,6 +185,7 @@ exec chromium-browser \
   --disable-translate \
   --disable-features=TranslateUI \
   --hide-scrollbars \
+  --password-store=basic \
   --check-for-update-interval=31536000 \
   http://localhost:5000
 XINIT
@@ -344,8 +346,8 @@ chown -R pi:pi /home/pi/.icons
 echo "      GTK cursor theme set to blank."
 
 # ── 5b. Touch input calibration udev rule ────────────────────────────────────
-# This applies the 90-degree calibration matrix at the kernel/udev level,
-# before any compositor sees the device — most reliable method.
+# Applies the 90-degree calibration matrix for the yldzkj touchscreen used
+# with the portrait-mounted 7" display. Installed on all systems.
 cat > /etc/udev/rules.d/99-steelhaus-touch.rules << 'UDEV'
 ACTION=="add|change", KERNEL=="event*", \
   ATTRS{name}=="yldzkj USB2IIC_CTP_CONTROL", \
