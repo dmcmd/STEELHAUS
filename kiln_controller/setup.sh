@@ -119,39 +119,35 @@ systemctl daemon-reload
 systemctl enable kiln-controller.service
 echo "      Service created and enabled."
 
-# ── 5. Configure direct-boot kiosk (cage + Chromium, no desktop) ─────────────
-echo "[5/8] Configuring direct-boot kiosk (cage — no desktop)..."
+# ── 5. Configure kiosk display (force X11, disable Wayland) ──────────────────
+echo "[5/8] Configuring kiosk display..."
 #
-# Boot flow:
-#   kernel -> getty auto-login as pi on TTY1 -> .bash_profile runs start_kiosk.sh
-#   -> cage launches Chromium as the only app, full screen.
+# STEELHAUS requires X11 for reliable touchscreen calibration and cursor
+# hiding. Wayland has compatibility issues with these features on Pi hardware.
+# We force X11 via raspi-config regardless of what was previously configured.
 #
-# Launching cage from .bash_profile is the most reliable method — all seat,
-# DRM, and Wayland environment variables are set correctly by the login process.
-# SSH sessions are NOT affected (tty check guards it).
+# Boot flow after setup:
+#   kernel -> TTY1 auto-login as pi -> .bash_profile -> start_kiosk.sh
+#   -> cage (or xinit fallback) -> Chromium fullscreen
+#   SSH sessions are NOT affected (tty check guards .bash_profile).
 
-# Create kiosk launch script
-# Install wlr-randr for Wayland display rotation
+# Force X11 display server
+if command -v raspi-config >/dev/null 2>&1; then
+  raspi-config nonint do_wayland W1 2>/dev/null && \
+    echo "      Forced X11 display server (Wayland disabled)." || \
+    echo "      WARNING: Could not set X11 via raspi-config — may already be X11."
+else
+  echo "      raspi-config not found — skipping display server switch."
+fi
+
+# Install wlr-randr (used by cage)
 apt-get install -y wlr-randr 2>/dev/null || true
 
-# Create a wrapper script that cage will run — it rotates the display first,
-# then launches Chromium. Both run inside the same cage Wayland session.
+# ── cage_wrapper.sh — runs inside cage Wayland-in-TTY session ─────────────────
 cat > /home/pi/kiln_controller/cage_wrapper.sh << 'WRAPPER'
 #!/bin/bash
-# Rotate display 270 degrees, then launch Chromium
-# Display rotation is handled at the DRM/kernel level via config.txt (display_rotate=1)
-# wlr-randr not used — cage 0.1.4 does not support wlr-output-management protocol.
-
-# Apply touch input calibration matrix to match 90-degree display rotation.
-# Device: yldzkj USB2IIC_CTP_CONTROL (/dev/input/event4)
-# Matrix for 90-degree clockwise rotation: 0 -1 1 1 0 0 0 0 1
-TOUCH_DEV="yldzkj USB2IIC_CTP_CONTROL"
-if command -v xinput >/dev/null 2>&1; then
-  xinput set-prop "$TOUCH_DEV" "libinput Calibration Matrix" 0 -1 1 1 0 0 0 0 1 2>/dev/null || true
-fi
-# Wayland/libinput environment variable approach (works without xinput)
+# STEELHAUS Kiosk — cage wrapper
 export LIBINPUT_CALIBRATION_MATRIX="0 -1 1 1 0 0"
-
 exec chromium-browser \
   --hide-scrollbars \
   --kiosk \
@@ -170,10 +166,33 @@ WRAPPER
 chmod +x /home/pi/kiln_controller/cage_wrapper.sh
 chown pi:pi /home/pi/kiln_controller/cage_wrapper.sh
 
+# ── xinitrc.sh — fallback X11 session ─────────────────────────────────────────
+cat > /home/pi/kiln_controller/xinitrc.sh << 'XINIT'
+#!/bin/bash
+# STEELHAUS Kiosk — X11 xinit session (fallback)
+xrandr --output HDMI-1 --rotate right 2>/dev/null || \
+  xrandr --output HDMI-A-1 --rotate right 2>/dev/null || true
+unclutter -idle 0.1 -root &
+matchbox-window-manager -use_titlebar no &
+exec chromium-browser \
+  --kiosk \
+  --noerrdialogs \
+  --disable-infobars \
+  --no-first-run \
+  --disable-restore-session-state \
+  --disable-session-crashed-bubble \
+  --disable-translate \
+  --disable-features=TranslateUI \
+  --hide-scrollbars \
+  --check-for-update-interval=31536000 \
+  http://localhost:5000
+XINIT
+chmod +x /home/pi/kiln_controller/xinitrc.sh
+chown pi:pi /home/pi/kiln_controller/xinitrc.sh
+
+# ── start_kiosk.sh — main kiosk launcher ──────────────────────────────────────
 cat > /home/pi/kiln_controller/start_kiosk.sh << 'KIOSK'
 #!/bin/bash
-# STEELHAUS Kiosk — X11 + xrandr rotation + Chromium
-
 # Wait for Flask to be ready (up to 60s)
 for i in $(seq 1 30); do
   if curl -s http://localhost:5000 > /dev/null 2>&1; then
@@ -182,30 +201,15 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-# Start X server on VT1, rotate display 90 degrees clockwise
-xinit /home/pi/kiln_controller/xinitrc.sh -- :0 vt1 -nolisten tcp &
+# Try cage first (preferred), fall back to xinit
+if command -v cage >/dev/null 2>&1; then
+  exec cage -s -- /home/pi/kiln_controller/cage_wrapper.sh
+else
+  exec xinit /home/pi/kiln_controller/xinitrc.sh -- :0 vt1 -nolisten tcp
+fi
 KIOSK
-
 chmod +x /home/pi/kiln_controller/start_kiosk.sh
 chown pi:pi /home/pi/kiln_controller/start_kiosk.sh
-
-# Create xinitrc — X session script that rotates display and launches Chromium
-cat > /home/pi/kiln_controller/xinitrc.sh << 'XINIT'
-#!/bin/bash
-# Rotate display 90 degrees clockwise via xrandr (right = 90 CW)
-xrandr --output HDMI-1 --rotate right 2>/dev/null ||   xrandr --output HDMI-A-1 --rotate right 2>/dev/null || true
-
-# Hide cursor after 0.1s idle
-unclutter -idle 0.1 -root &
-
-# Matchbox window manager — no title bars, fullscreen support
-matchbox-window-manager -use_titlebar no &
-
-# Launch Chromium in kiosk mode (X11 — no Wayland flags)
-exec chromium-browser   --kiosk   --noerrdialogs   --disable-infobars   --no-first-run   --disable-restore-session-state   --disable-session-crashed-bubble   --disable-translate   --disable-features=TranslateUI   --hide-scrollbars   --check-for-update-interval=31536000   http://localhost:5000
-XINIT
-chmod +x /home/pi/kiln_controller/xinitrc.sh
-chown pi:pi /home/pi/kiln_controller/xinitrc.sh
 
 # TTY1 auto-login for pi
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -215,9 +219,10 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin pi --noclear %I $TERM
 AUTOLOGIN
 
-# Disable display manager
+# Disable all display managers and boot to text target
 systemctl disable lightdm 2>/dev/null || true
 systemctl disable gdm     2>/dev/null || true
+systemctl disable sddm    2>/dev/null || true
 systemctl set-default multi-user.target
 
 # Remove old kiln-kiosk systemd service if present from previous install
@@ -225,15 +230,13 @@ systemctl disable kiln-kiosk.service 2>/dev/null || true
 rm -f /etc/systemd/system/kiln-kiosk.service
 systemctl daemon-reload
 
-# Add cage launcher to pi's .bash_profile — only fires on TTY1, not SSH
+# Add kiosk launcher to .bash_profile — only fires on TTY1, not SSH
 PROFILE=/home/pi/.bash_profile
-# Remove any previous kiosk block cleanly
 if [ -f "$PROFILE" ]; then
   sed -i '/# STEELHAUS kiosk/,/# end STEELHAUS kiosk/d' "$PROFILE"
 fi
-# Append kiosk block
 cat >> "$PROFILE" << 'PROFILE_BLOCK'
-# STEELHAUS kiosk — launch cage+Chromium when logging into TTY1
+# STEELHAUS kiosk — launch when logging into TTY1
 if [ "$(tty)" = "/dev/tty1" ]; then
   exec /home/pi/kiln_controller/start_kiosk.sh
 fi
@@ -241,11 +244,11 @@ fi
 PROFILE_BLOCK
 chown pi:pi "$PROFILE"
 
-echo "      TTY1 auto-login + .bash_profile kiosk launch configured."
-
 # Verify kiosk scripts exist and are executable
 KIOSK_OK=true
-for f in /home/pi/kiln_controller/start_kiosk.sh /home/pi/kiln_controller/xinitrc.sh; do
+for f in /home/pi/kiln_controller/start_kiosk.sh \
+          /home/pi/kiln_controller/cage_wrapper.sh \
+          /home/pi/kiln_controller/xinitrc.sh; do
   if [ ! -x "$f" ]; then
     echo "      WARNING: $f missing or not executable"
     ERRORS="$ERRORS\n  - Kiosk script missing: $f"
@@ -256,18 +259,19 @@ if [ "$KIOSK_OK" = true ]; then
   echo "      Kiosk scripts verified."
 fi
 
-# Rotate display 90 degrees at the DRM level (works with any Wayland compositor)
+echo "      TTY1 auto-login + .bash_profile kiosk launch configured."
+echo "      Boot: kernel -> TTY1 auto-login -> cage -> Chromium."
+echo "      SSH access unaffected."
+
+# Rotate display 90 degrees at the DRM level
 CONFIG=/boot/firmware/config.txt
 if [ -f "$CONFIG" ]; then
-  # Remove any existing display_rotate line and add the correct one
   sed -i '/^display_rotate=/d' "$CONFIG"
   echo "display_rotate=1" >> "$CONFIG"
   echo "      Display rotation set to 90 degrees in config.txt."
 else
   echo "      WARNING: /boot/firmware/config.txt not found — set display_rotate=1 manually."
 fi
-echo "      Boot: kernel -> TTY1 auto-login -> cage -> Chromium."
-echo "      SSH access unaffected."
 
 # ── 5a. Create blank cursor theme ────────────────────────────────────────────
 echo "[5a] Creating blank cursor theme..."
@@ -408,8 +412,7 @@ echo "  2. sudo systemctl start kiln-controller"
 echo "  3. sudo systemctl status kiln-controller"
 echo "  4. sudo reboot"
 echo ""
-echo "  After reboot: Chromium opens in ~5-8 seconds."
-echo "  No desktop environment ever appears."
+echo "  After reboot: Chromium opens automatically on the display."
 echo "  SSH access still works normally."
 echo ""
 echo "  NOTE: Display is configured to rotate 90 degrees (portrait)."
