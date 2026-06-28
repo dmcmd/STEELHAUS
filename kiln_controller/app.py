@@ -536,6 +536,291 @@ def api_sim():
 
 # ── Shutdown ─────────────────────────────────────────────────────────────────
 
+# ── WiFi (NetworkManager / nmcli — Bookworm default) ─────────────────────────
+
+def _nm_wifi_profiles():
+    """Return a dict mapping profile_name -> {ssid, priority} for all saved WiFi profiles."""
+    list_result = subprocess.run(
+        ["nmcli", "--escape", "no", "-t", "-f", "TYPE,NAME", "connection", "show"],
+        capture_output=True, text=True, timeout=5
+    )
+    profiles = {}
+    for line in list_result.stdout.splitlines():
+        idx = line.find(":")
+        if idx == -1:
+            continue
+        ctype = line[:idx].strip().lower()
+        cname = line[idx+1:].strip()
+        if ctype == "802-11-wireless" and cname:
+            profiles[cname] = {"ssid": None, "priority": 0}
+
+    for pname in list(profiles.keys()):
+        detail = subprocess.run(
+            ["nmcli", "--escape", "no", "-g",
+             "802-11-wireless.ssid,connection.autoconnect-priority",
+             "connection", "show", pname],
+            capture_output=True, text=True, timeout=5
+        )
+        lines = detail.stdout.strip().splitlines()
+        ssid     = lines[0].strip() if len(lines) > 0 else ""
+        priority = lines[1].strip() if len(lines) > 1 else "0"
+        profiles[pname]["ssid"]     = ssid if ssid else pname
+        try:
+            profiles[pname]["priority"] = int(priority)
+        except ValueError:
+            profiles[pname]["priority"] = 0
+
+    return profiles  # {profile_name: {ssid, priority}}
+
+
+def _nm_saved_wifi_ssids():
+    """Return a set of SSIDs (not profile names) for all saved WiFi profiles."""
+    return {v["ssid"] for v in _nm_wifi_profiles().values()}
+
+
+def _nm_active_wifi():
+    """Return (ssid, ip) of the currently active WiFi connection, or (None, None)."""
+    import re as _re
+
+    # ── Get IP directly from kernel via `ip -4 addr show wlan0` ──────────────
+    # This is the most reliable source — unaffected by NM state or output format
+    ip = None
+    try:
+        ip_out = subprocess.run(
+            ["ip", "-4", "addr", "show", "wlan0"],
+            capture_output=True, text=True, timeout=5
+        )
+        m = _re.search(r"inet (\d+\.\d+\.\d+\.\d+)", ip_out.stdout)
+        if m:
+            ip = m.group(1)
+    except Exception:
+        pass
+
+    # ── Get active connection profile name from nmcli ─────────────────────────
+    # nmcli -g outputs values only (no keys), one per line, in the order requested
+    profile_name = None
+    try:
+        result = subprocess.run(
+            ["nmcli", "--escape", "no", "-g",
+             "GENERAL.CONNECTION", "dev", "show", "wlan0"],
+            capture_output=True, text=True, timeout=5
+        )
+        val = result.stdout.strip()
+        if val and val != "--":
+            profile_name = val
+    except Exception:
+        pass
+
+    if not profile_name:
+        return None, ip
+
+    # ── Resolve profile name → actual SSID ───────────────────────────────────
+    profiles = _nm_wifi_profiles()
+    if profile_name in profiles:
+        ssid = profiles[profile_name]["ssid"]
+    else:
+        try:
+            detail = subprocess.run(
+                ["nmcli", "--escape", "no", "-g", "802-11-wireless.ssid",
+                 "connection", "show", profile_name],
+                capture_output=True, text=True, timeout=5
+            )
+            ssid = detail.stdout.strip() or profile_name
+        except Exception:
+            ssid = profile_name
+
+    return ssid, ip
+
+
+@app.route("/api/wifi/debug", methods=["GET"])
+def api_wifi_debug():
+    """Return raw nmcli and ip addr output for diagnosing IP detection issues."""
+    try:
+        nmcli_out = subprocess.run(
+            ["nmcli", "--escape", "no", "dev", "show", "wlan0"],
+            capture_output=True, text=True, timeout=5
+        ).stdout
+        ip_addr_out = subprocess.run(
+            ["ip", "-4", "addr", "show", "wlan0"],
+            capture_output=True, text=True, timeout=5
+        ).stdout
+        ssid, ip = _nm_active_wifi()
+        return jsonify({
+            "ok": True,
+            "resolved_ssid": ssid,
+            "resolved_ip": ip,
+            "nmcli_raw": nmcli_out,
+            "ip_addr_raw": ip_addr_out,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/status", methods=["GET"])
+def api_wifi_status():
+    """Return current WiFi SSID and IP."""
+    try:
+        ssid, ip = _nm_active_wifi()
+        return jsonify({"ok": True, "ssid": ssid, "ip": ip})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/scan", methods=["GET"])
+def api_wifi_scan():
+    """Return visible SSIDs sorted by signal strength, flagging saved profiles."""
+    try:
+        subprocess.run(
+            ["sudo", "nmcli", "dev", "wifi", "rescan"],
+            capture_output=True, timeout=8
+        )
+        # Use --escape no so colons in SSIDs don't break parsing
+        result = subprocess.run(
+            ["nmcli", "--escape", "no", "-t", "-f", "SSID,SIGNAL", "dev", "wifi", "list"],
+            capture_output=True, text=True, timeout=10
+        )
+        saved_ssids = _nm_saved_wifi_ssids()
+        seen  = {}
+        for line in result.stdout.splitlines():
+            # Last field is signal (integer), everything before the last colon is SSID
+            idx = line.rfind(":")
+            if idx == -1:
+                continue
+            ssid = line[:idx].strip()
+            if not ssid:
+                continue
+            try:
+                signal = int(line[idx+1:].strip())
+            except ValueError:
+                signal = 0
+            signal_dbm = -100 + signal
+            if ssid not in seen or signal_dbm > seen[ssid]["signal"]:
+                seen[ssid] = {
+                    "ssid":   ssid,
+                    "signal": signal_dbm,
+                    "saved":  ssid in saved_ssids,
+                }
+        sorted_nets = sorted(seen.values(), key=lambda x: x["signal"], reverse=True)
+        return jsonify({"ok": True, "networks": sorted_nets})
+    except Exception as e:
+        logger.error(f"WiFi scan error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/saved", methods=["GET"])
+def api_wifi_saved():
+    """Return all saved WiFi profiles with SSID, priority, and default flag."""
+    try:
+        profiles = _nm_wifi_profiles()
+        entries  = [{"ssid": v["ssid"], "priority": v["priority"]}
+                    for v in profiles.values()]
+        entries.sort(key=lambda x: (-x["priority"], x["ssid"].lower()))
+        max_pri  = max((e["priority"] for e in entries), default=0)
+        for e in entries:
+            e["default"] = (e["priority"] == max_pri and max_pri > 0)
+        return jsonify({"ok": True, "saved": entries})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/connect", methods=["POST"])
+def api_wifi_connect():
+    """Connect to a WiFi network. Uses saved profile if no password supplied."""
+    data     = request.json or {}
+    ssid     = data.get("ssid", "").strip()
+    password = data.get("password", "").strip()
+    if not ssid:
+        return jsonify({"ok": False, "error": "SSID required"}), 400
+    try:
+        profiles = _nm_wifi_profiles()  # {profile_name: {ssid, priority}}
+        # Find the profile whose SSID matches (if any)
+        profile_name = next((p for p, v in profiles.items() if v["ssid"] == ssid), None)
+
+        # Disconnect current connection first so NM doesn't block the switch
+        subprocess.run(
+            ["sudo", "nmcli", "dev", "disconnect", "wlan0"],
+            capture_output=True, timeout=8
+        )
+
+        if profile_name and not password:
+            # Saved profile exists — bring it up by profile name
+            cmd = ["sudo", "nmcli", "connection", "up", profile_name,
+                   "ifname", "wlan0"]
+        elif password:
+            # Delete stale profile if one exists, then connect fresh with password
+            if profile_name:
+                subprocess.run(
+                    ["sudo", "nmcli", "connection", "delete", profile_name],
+                    capture_output=True, timeout=8
+                )
+            cmd = [
+                "sudo", "nmcli", "dev", "wifi", "connect", ssid,
+                "password", password,
+                "ifname", "wlan0",
+            ]
+        else:
+            # Open network, no saved profile
+            cmd = [
+                "sudo", "nmcli", "dev", "wifi", "connect", ssid,
+                "ifname", "wlan0",
+            ]
+
+        subprocess.Popen(cmd)
+        return jsonify({"ok": True, "message": f"Connecting to '{ssid}'…"})
+    except Exception as e:
+        logger.error(f"WiFi connect error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/set-priority", methods=["POST"])
+def api_wifi_set_priority():
+    """Set one SSID as the default (priority 10); demote all others to 0."""
+    data = request.json or {}
+    ssid = data.get("ssid", "").strip()
+    if not ssid:
+        return jsonify({"ok": False, "error": "SSID required"}), 400
+    try:
+        profiles = _nm_wifi_profiles()
+        for pname, pdata in profiles.items():
+            priority = 10 if pdata["ssid"] == ssid else 0
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "modify", pname,
+                 "connection.autoconnect-priority", str(priority)],
+                capture_output=True, timeout=8
+            )
+        return jsonify({"ok": True, "message": f"'{ssid}' set as default network"})
+    except Exception as e:
+        logger.error(f"WiFi set-priority error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/wifi/forget", methods=["POST"])
+def api_wifi_forget():
+    """Delete the saved WiFi profile whose SSID matches the request."""
+    data = request.json or {}
+    ssid = data.get("ssid", "").strip()
+    if not ssid:
+        return jsonify({"ok": False, "error": "SSID required"}), 400
+    try:
+        profiles = _nm_wifi_profiles()
+        profile_name = next((p for p, v in profiles.items() if v["ssid"] == ssid), None)
+        if not profile_name:
+            return jsonify({"ok": False, "error": f"No saved profile found for '{ssid}'"}), 404
+        result = subprocess.run(
+            ["sudo", "nmcli", "connection", "delete", profile_name],
+            capture_output=True, text=True, timeout=8
+        )
+        if result.returncode == 0:
+            return jsonify({"ok": True, "message": f"Forgot '{ssid}'"})
+        else:
+            err = result.stderr.strip() or result.stdout.strip()
+            return jsonify({"ok": False, "error": err}), 500
+    except Exception as e:
+        logger.error(f"WiFi forget error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
 @app.route("/api/shutdown", methods=["POST"])
 def api_shutdown():
     kiln.stop()
