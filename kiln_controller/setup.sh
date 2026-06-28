@@ -143,36 +143,29 @@ fi
 # Install wlr-randr (used by cage)
 apt-get install -y wlr-randr 2>/dev/null || true
 
-# ── cage_wrapper.sh — runs inside cage Wayland-in-TTY session ─────────────────
-cat > /home/pi/kiln_controller/cage_wrapper.sh << 'WRAPPER'
-#!/bin/bash
-# STEELHAUS Kiosk — cage wrapper
-export LIBINPUT_CALIBRATION_MATRIX="0 -1 1 1 0 0"
-exec chromium-browser \
-  --hide-scrollbars \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --no-first-run \
-  --disable-restore-session-state \
-  --disable-session-crashed-bubble \
-  --disable-translate \
-  --disable-features=TranslateUI \
-  --enable-features=UseOzonePlatform \
-  --ozone-platform=wayland \
-  --password-store=basic \
-  --check-for-update-interval=31536000 \
-  http://localhost:5000
-WRAPPER
-chmod +x /home/pi/kiln_controller/cage_wrapper.sh
-chown pi:pi /home/pi/kiln_controller/cage_wrapper.sh
+# cage_wrapper.sh is NOT used — cage/Wayland causes display rotation and
+# touchscreen calibration failures on Pi 4 Bookworm. xinit/X11 is used instead.
 
-# ── xinitrc.sh — fallback X11 session ─────────────────────────────────────────
+# ── xinitrc.sh — X11 kiosk session ───────────────────────────────────────────
 cat > /home/pi/kiln_controller/xinitrc.sh << 'XINIT'
 #!/bin/bash
-# STEELHAUS Kiosk — X11 xinit session (fallback)
-xrandr --output HDMI-1 --rotate right 2>/dev/null || \
-  xrandr --output HDMI-A-1 --rotate right 2>/dev/null || true
+# STEELHAUS Kiosk — X11 xinit session
+#
+# Rotate display 90° CCW (portrait, connector at bottom).
+# xrandr --rotate left works with vc4-kms-v3d on Pi 4 Bookworm X11.
+xrandr --output HDMI-1 --rotate left 2>/dev/null || \
+  xrandr --output HDMI-A-1 --rotate left 2>/dev/null || true
+
+# Fix touch input to match rotated display.
+# The udev rule (99-steelhaus-touch.rules) applies the libinput calibration
+# matrix at the driver level, so the xinput Coordinate Transformation Matrix
+# must be left as identity (1 0 0 / 0 1 0 / 0 0 1) to avoid double-rotation.
+TOUCH_ID=$(xinput list --id-only "yldzkj USB2IIC_CTP_CONTROL" 2>/dev/null || \
+           xinput list | grep -i touch | grep -o 'id=[0-9]*' | head -1 | cut -d= -f2)
+if [ -n "$TOUCH_ID" ]; then
+  xinput set-prop "$TOUCH_ID" "Coordinate Transformation Matrix" 1 0 0 0 1 0 0 0 1
+fi
+
 unclutter -idle 0.1 -root &
 matchbox-window-manager -use_titlebar no &
 exec chromium-browser \
@@ -185,6 +178,7 @@ exec chromium-browser \
   --disable-translate \
   --disable-features=TranslateUI \
   --hide-scrollbars \
+  --touch-events=enabled \
   --password-store=basic \
   --check-for-update-interval=31536000 \
   http://localhost:5000
@@ -203,12 +197,9 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-# Try cage first (preferred), fall back to xinit
-if command -v cage >/dev/null 2>&1; then
-  exec cage -s -- /home/pi/kiln_controller/cage_wrapper.sh
-else
-  exec xinit /home/pi/kiln_controller/xinitrc.sh -- :0 vt1 -nolisten tcp
-fi
+# Always use xinit/X11 — cage/Wayland has known issues with display rotation
+# and touchscreen calibration on Pi 4 Bookworm.
+exec xinit /home/pi/kiln_controller/xinitrc.sh -- :0 vt1 -nolisten tcp
 KIOSK
 chmod +x /home/pi/kiln_controller/start_kiosk.sh
 chown pi:pi /home/pi/kiln_controller/start_kiosk.sh
@@ -249,7 +240,6 @@ chown pi:pi "$PROFILE"
 # Verify kiosk scripts exist and are executable
 KIOSK_OK=true
 for f in /home/pi/kiln_controller/start_kiosk.sh \
-          /home/pi/kiln_controller/cage_wrapper.sh \
           /home/pi/kiln_controller/xinitrc.sh; do
   if [ ! -x "$f" ]; then
     echo "      WARNING: $f missing or not executable"
@@ -265,15 +255,9 @@ echo "      TTY1 auto-login + .bash_profile kiosk launch configured."
 echo "      Boot: kernel -> TTY1 auto-login -> cage -> Chromium."
 echo "      SSH access unaffected."
 
-# Rotate display 90 degrees at the DRM level
-CONFIG=/boot/firmware/config.txt
-if [ -f "$CONFIG" ]; then
-  sed -i '/^display_rotate=/d' "$CONFIG"
-  echo "display_rotate=1" >> "$CONFIG"
-  echo "      Display rotation set to 90 degrees in config.txt."
-else
-  echo "      WARNING: /boot/firmware/config.txt not found — set display_rotate=1 manually."
-fi
+# Display rotation is handled via xrandr --rotate left inside xinitrc.sh.
+# display_rotate= is ignored by the vc4-kms-v3d driver used on Bookworm
+# and must NOT be set — it causes confusion without effect.
 
 # ── 5a. Create blank cursor theme ────────────────────────────────────────────
 echo "[5a] Creating blank cursor theme..."
@@ -417,9 +401,9 @@ echo ""
 echo "  After reboot: Chromium opens automatically on the display."
 echo "  SSH access still works normally."
 echo ""
-echo "  NOTE: Display is configured to rotate 90 degrees (portrait)."
-echo "  If your display is landscape (normal orientation), edit"
-echo "  /boot/firmware/config.txt and remove the display_rotate=1 line,"
-echo "  then reboot."
+echo "  NOTE: Display is configured to rotate 90 degrees CCW (portrait,"
+echo "  connector at bottom) via xrandr inside xinitrc.sh."
+echo "  To change orientation, edit /home/pi/kiln_controller/xinitrc.sh"
+echo "  and change '--rotate left' to: normal, right, inverted, or left."
 echo "=============================================="
 echo ""
