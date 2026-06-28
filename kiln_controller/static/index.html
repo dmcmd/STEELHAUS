@@ -1037,6 +1037,56 @@ input:checked+.switch-slider::before{transform:translateX(26px);background:var(-
     5. Open: <code style="background:var(--panel2);padding:4px 10px;border-radius:6px;font-size:14px;color:var(--accent);">http://[kiln-tailscale-ip]:5000</code>
   </div>
 
+  <div class="section-title">WiFi Setup</div>
+  <div class="input-group">
+    <div id="wifi-current-status" style="font-size:14px;color:var(--text2);margin-bottom:14px;line-height:1.7;">
+      Checking connection…
+    </div>
+
+    <!-- SSID field -->
+    <div class="input-label">Network Name (SSID)</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <div class="np-field" style="flex:1;" ontouchstart="event.preventDefault();openKeyboard('wifi-ssid','WiFi Network Name',kbdValues['wifi-ssid']||'')" onclick="openKeyboard('wifi-ssid','WiFi Network Name',kbdValues['wifi-ssid']||'')">
+        <span class="np-field-val" id="wifi-ssid-display" style="color:var(--text2);">Tap to enter SSID</span>
+        <span class="np-field-icon">⌨</span>
+      </div>
+      <button class="btn btn-secondary" style="white-space:nowrap;padding:0 16px;" ontouchstart="event.preventDefault();wifiScan(this)" onclick="wifiScan(this)">📡 Scan</button>
+    </div>
+    <input type="hidden" id="wifi-ssid" value="">
+
+    <!-- Password field — hidden when a saved network is selected -->
+    <div id="wifi-password-wrap">
+      <div class="input-label">Password <span style="font-size:12px;color:var(--text2);">(leave blank for open networks)</span></div>
+      <div class="np-field" style="margin-bottom:10px;" ontouchstart="event.preventDefault();openKeyboard('wifi-password','WiFi Password',kbdValues['wifi-password']||'')" onclick="openKeyboard('wifi-password','WiFi Password',kbdValues['wifi-password']||'')">
+        <span class="np-field-val" id="wifi-password-display" style="color:var(--text2);">Tap to enter password</span>
+        <span class="np-field-icon">⌨</span>
+      </div>
+    </div>
+    <input type="hidden" id="wifi-password" value="">
+
+    <!-- Scan results list -->
+    <div id="wifi-scan-results" style="display:none;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;max-height:220px;overflow-y:auto;">
+      <!-- populated by wifiScan() -->
+    </div>
+
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+      After tapping Connect, the Pi will join the new network within ~15 seconds. If the page doesn't reload automatically, reconnect your device to the same network and navigate back to the controller.
+    </div>
+
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;" ontouchstart="event.preventDefault();wifiConnect()" onclick="wifiConnect()">🔗 Connect to Network</button>
+    <div id="wifi-connect-msg" style="display:none;margin-top:10px;font-size:14px;border-radius:var(--radius);padding:10px 14px;line-height:1.6;"></div>
+  </div>
+
+  <div class="section-title">Saved Networks</div>
+  <div class="input-group">
+    <div style="font-size:14px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+      Networks with saved passwords. Tap a network above to reconnect without re-entering the password. Use Forget to remove credentials.
+    </div>
+    <div id="wifi-saved-list" style="background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:4px;">
+      <div style="padding:12px 14px;color:var(--text2);font-size:14px;">Loading…</div>
+    </div>
+  </div>
+
   <div class="section-title">System</div>
   <div class="input-group">
     <div class="input-label" style="margin-bottom:10px;">Safely power down the Raspberry Pi before unplugging.</div>
@@ -1088,42 +1138,78 @@ input:checked+.switch-slider::before{transform:translateX(26px);background:var(-
   <div class="kbd-box">
     <div class="kbd-title" id="kbd-title">Enter Text</div>
     <div class="kbd-display" id="kbd-display"></div>
-    <div class="kbd-row">
-      <div class="kkey" onclick="kKey('q')">q</div><div class="kkey" onclick="kKey('w')">w</div>
-      <div class="kkey" onclick="kKey('e')">e</div><div class="kkey" onclick="kKey('r')">r</div>
-      <div class="kkey" onclick="kKey('t')">t</div><div class="kkey" onclick="kKey('y')">y</div>
-      <div class="kkey" onclick="kKey('u')">u</div><div class="kkey" onclick="kKey('i')">i</div>
-      <div class="kkey" onclick="kKey('o')">o</div><div class="kkey" onclick="kKey('p')">p</div>
+
+    <!-- ── Letter layer ── -->
+    <div id="kbd-letter-layer">
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey('q')">q</div><div class="kkey" onclick="kKey('w')">w</div>
+        <div class="kkey" onclick="kKey('e')">e</div><div class="kkey" onclick="kKey('r')">r</div>
+        <div class="kkey" onclick="kKey('t')">t</div><div class="kkey" onclick="kKey('y')">y</div>
+        <div class="kkey" onclick="kKey('u')">u</div><div class="kkey" onclick="kKey('i')">i</div>
+        <div class="kkey" onclick="kKey('o')">o</div><div class="kkey" onclick="kKey('p')">p</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey('a')">a</div><div class="kkey" onclick="kKey('s')">s</div>
+        <div class="kkey" onclick="kKey('d')">d</div><div class="kkey" onclick="kKey('f')">f</div>
+        <div class="kkey" onclick="kKey('g')">g</div><div class="kkey" onclick="kKey('h')">h</div>
+        <div class="kkey" onclick="kKey('j')">j</div><div class="kkey" onclick="kKey('k')">k</div>
+        <div class="kkey" onclick="kKey('l')">l</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey wide" id="kbd-shift-btn" onclick="kShift()">⇧ SHIFT</div>
+        <div class="kkey" onclick="kKey('z')">z</div><div class="kkey" onclick="kKey('x')">x</div>
+        <div class="kkey" onclick="kKey('c')">c</div><div class="kkey" onclick="kKey('v')">v</div>
+        <div class="kkey" onclick="kKey('b')">b</div><div class="kkey" onclick="kKey('n')">n</div>
+        <div class="kkey" onclick="kKey('m')">m</div>
+        <div class="kkey back-k wide" onclick="kKey('back')">⌫</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey wide" onclick="kSymMode()">!@# SYM</div>
+        <div class="kkey" onclick="kKey('-')">-</div>
+        <div class="kkey space" onclick="kKey(' ')">SPACE</div>
+        <div class="kkey" onclick="kKey('.')">.</div>
+        <div class="kkey confirm-k wide" onclick="kConfirm()">DONE ✓</div>
+      </div>
     </div>
-    <div class="kbd-row">
-      <div class="kkey" onclick="kKey('a')">a</div><div class="kkey" onclick="kKey('s')">s</div>
-      <div class="kkey" onclick="kKey('d')">d</div><div class="kkey" onclick="kKey('f')">f</div>
-      <div class="kkey" onclick="kKey('g')">g</div><div class="kkey" onclick="kKey('h')">h</div>
-      <div class="kkey" onclick="kKey('j')">j</div><div class="kkey" onclick="kKey('k')">k</div>
-      <div class="kkey" onclick="kKey('l')">l</div>
-    </div>
-    <div class="kbd-row">
-      <div class="kkey wide" onclick="kShift()">⇧ SHIFT</div>
-      <div class="kkey" onclick="kKey('z')">z</div><div class="kkey" onclick="kKey('x')">x</div>
-      <div class="kkey" onclick="kKey('c')">c</div><div class="kkey" onclick="kKey('v')">v</div>
-      <div class="kkey" onclick="kKey('b')">b</div><div class="kkey" onclick="kKey('n')">n</div>
-      <div class="kkey" onclick="kKey('m')">m</div>
-      <div class="kkey back-k wide" onclick="kKey('back')">⌫</div>
-    </div>
-    <div class="kbd-row">
-      <div class="kkey wide" onclick="kNumMode()">123</div>
-      <div class="kkey" onclick="kKey('-')">-</div>
-      <div class="kkey space" onclick="kKey(' ')">SPACE</div>
-      <div class="kkey" onclick="kKey('.')">.</div>
-      <div class="kkey confirm-k wide" onclick="kConfirm()">DONE ✓</div>
-    </div>
-    <!-- Number row (shown when 123 toggled) -->
-    <div class="kbd-row hidden" id="kbd-numrow">
-      <div class="kkey" onclick="kKey('1')">1</div><div class="kkey" onclick="kKey('2')">2</div>
-      <div class="kkey" onclick="kKey('3')">3</div><div class="kkey" onclick="kKey('4')">4</div>
-      <div class="kkey" onclick="kKey('5')">5</div><div class="kkey" onclick="kKey('6')">6</div>
-      <div class="kkey" onclick="kKey('7')">7</div><div class="kkey" onclick="kKey('8')">8</div>
-      <div class="kkey" onclick="kKey('9')">9</div><div class="kkey" onclick="kKey('0')">0</div>
+
+    <!-- ── Symbol layer (hidden by default) ── -->
+    <div id="kbd-sym-layer" class="hidden">
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey('1')">1</div><div class="kkey" onclick="kKey('2')">2</div>
+        <div class="kkey" onclick="kKey('3')">3</div><div class="kkey" onclick="kKey('4')">4</div>
+        <div class="kkey" onclick="kKey('5')">5</div><div class="kkey" onclick="kKey('6')">6</div>
+        <div class="kkey" onclick="kKey('7')">7</div><div class="kkey" onclick="kKey('8')">8</div>
+        <div class="kkey" onclick="kKey('9')">9</div><div class="kkey" onclick="kKey('0')">0</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey('!')">!</div><div class="kkey" onclick="kKey('@')">@</div>
+        <div class="kkey" onclick="kKey('#')">#</div><div class="kkey" onclick="kKey('$')">$</div>
+        <div class="kkey" onclick="kKey('%')">%</div><div class="kkey" onclick="kKey('^')">^</div>
+        <div class="kkey" data-ch="&amp;" onclick="kKeyFromData(this)">&amp;</div><div class="kkey" onclick="kKey('*')">*</div>
+        <div class="kkey" onclick="kKey('(')">( </div><div class="kkey" onclick="kKey(')')">)</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey('_')">_</div><div class="kkey" onclick="kKey('+')">+</div>
+        <div class="kkey" onclick="kKey('=')"> =</div><div class="kkey" onclick="kKey('[')"> [</div>
+        <div class="kkey" onclick="kKey(']')">]</div><div class="kkey" onclick="kKey('{')"> {</div>
+        <div class="kkey" onclick="kKey('}')">}</div><div class="kkey" onclick="kKey('|')">|</div>
+        <div class="kkey" onclick="kKey('\\')">\</div>
+        <div class="kkey back-k" onclick="kKey('back')">⌫</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey" onclick="kKey(';')">;</div><div class="kkey" onclick="kKey(':')">:</div>
+        <div class="kkey" data-ch="'" onclick="kKeyFromData(this)">&apos;</div>
+        <div class="kkey" data-ch='"' onclick="kKeyFromData(this)">&quot;</div>
+        <div class="kkey" onclick="kKey(',')"> ,</div><div class="kkey" onclick="kKey('/')"> /</div>
+        <div class="kkey" onclick="kKey('?')">?</div><div class="kkey" onclick="kKey('`')">`</div>
+        <div class="kkey" onclick="kKey('~')">~</div>
+        <div class="kkey back-k" onclick="kKey('back')">⌫</div>
+      </div>
+      <div class="kbd-row">
+        <div class="kkey wide" onclick="kSymMode()">ABC</div>
+        <div class="kkey space" onclick="kKey(' ')">SPACE</div>
+        <div class="kkey confirm-k wide" onclick="kConfirm()">DONE ✓</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1208,6 +1294,7 @@ let simProgElapsed = 0;  // total sim seconds elapsed
 
 // Chart
 let chartRefreshTimer = null;
+let wifiRefreshTimer = null;
 let chartAllLogs = [];       // full dataset fetched from server
 let chartView = {            // current viewport in data-space
   xMin: 0, xMax: 0,         // unix timestamps (seconds)
@@ -1485,9 +1572,21 @@ function onSimToggle(on){
 }
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
+// Set to true while a WiFi network switch is in progress
+let _wifiSwitching = false;
+
 function connectSSE(){
   const es=new EventSource(API+'/api/stream');
-  es.onopen=()=>{document.getElementById('conn-dot').classList.add('ok');document.getElementById('conn-text').textContent='Live';};
+  es.onopen=()=>{
+    document.getElementById('conn-dot').classList.add('ok');
+    document.getElementById('conn-text').textContent='Live';
+    // If we just switched WiFi networks, reload the page so the kiosk
+    // screen refreshes with the correct IP and connection state
+    if(_wifiSwitching){
+      _wifiSwitching = false;
+      setTimeout(()=>{ window.location.reload(); }, 1500);
+    }
+  };
   es.onmessage=e=>{
     try{lastStatus=JSON.parse(e.data);updateDashboard(lastStatus);chartUpdateStatusBar(lastStatus);}
     catch(err){console.warn('SSE parse error:',err);}
@@ -1899,19 +1998,28 @@ function openKeyboard(targetId, title, currentVal){
   kbdNumMode = false;
   document.getElementById('kbd-title').textContent = title;
   _kbdRefreshDisplay();
-  document.getElementById('kbd-numrow').classList.add('hidden');
+  // Reset to letter layer
+  document.getElementById('kbd-sym-layer').classList.add('hidden');
+  document.getElementById('kbd-letter-layer').classList.remove('hidden');
   document.getElementById('kbd-overlay').classList.add('open');
 }
 
 function _kbdRefreshDisplay(){
   const el = document.getElementById('kbd-display');
   el.textContent = kbdBuffer || '';
-  // Update shift/caps visual on keys
-  document.querySelectorAll('#kbd-overlay .kkey:not(.wide):not(.space):not(.back-k):not(.confirm-k)').forEach(k=>{
+  // Update letter case on keys
+  document.querySelectorAll('#kbd-letter-layer .kkey:not(.wide):not(.space):not(.back-k):not(.confirm-k)').forEach(k=>{
     if(k.textContent.length===1 && k.textContent.match(/[a-z]/i)){
       k.textContent = kbdShift ? k.textContent.toUpperCase() : k.textContent.toLowerCase();
     }
   });
+  // Highlight shift button when active
+  const shiftBtn = document.getElementById('kbd-shift-btn');
+  if(shiftBtn){
+    shiftBtn.style.background = kbdShift ? 'var(--accent)' : '';
+    shiftBtn.style.color      = kbdShift ? '#fff' : '';
+    shiftBtn.style.borderColor= kbdShift ? 'var(--accent)' : '';
+  }
 }
 
 function kKey(ch){
@@ -1930,20 +2038,32 @@ function kShift(){
   _kbdRefreshDisplay();
 }
 
-function kNumMode(){
+function kSymMode(){
   kbdNumMode = !kbdNumMode;
-  document.getElementById('kbd-numrow').classList.toggle('hidden', !kbdNumMode);
+  document.getElementById('kbd-letter-layer').classList.toggle('hidden',  kbdNumMode);
+  document.getElementById('kbd-sym-layer').classList.toggle('hidden', !kbdNumMode);
+}
+
+// Handle keys that need data-ch attribute (quotes etc.) to avoid escaping issues
+function kKeyFromData(el){
+  kKey(el.dataset.ch);
 }
 
 function kConfirm(){
   if(!kbdTarget) return;
   const val = kbdBuffer.trim();
+  const _target = kbdTarget;
   kbdValues[kbdTarget] = val;
   document.getElementById(kbdTarget).value = val;
   // Update the display span
   const dispEl = document.getElementById(kbdTarget + '-display');
   if(dispEl){
-    dispEl.textContent = val || (kbdTarget==='pe-name' ? 'e.g. 1084 Harden' : 'Optional notes');
+    // WiFi password: mask the display
+    if(_target === 'wifi-password') {
+      dispEl.textContent = val ? '●'.repeat(Math.min(val.length, 24)) : 'Tap to enter password';
+    } else {
+      dispEl.textContent = val || (kbdTarget==='pe-name' ? 'e.g. 1084 Harden' : 'Optional notes');
+    }
     dispEl.style.color = val ? 'var(--text)' : 'var(--text2)';
   }
   document.getElementById('kbd-overlay').classList.remove('open');
@@ -3260,6 +3380,7 @@ async function loadChartData() {
 
 function startChartRefresh() {
   stopChartRefresh();
+  stopWifiRefresh();
   loadChartData();
   chartRefreshTimer = setInterval(() => {
     if (document.getElementById('page-chart').classList.contains('active')) {
@@ -3270,6 +3391,15 @@ function startChartRefresh() {
 
 function stopChartRefresh() {
   if (chartRefreshTimer) { clearInterval(chartRefreshTimer); chartRefreshTimer = null; }
+}
+
+function startWifiRefresh() {
+  stopWifiRefresh();
+  wifiLoadStatus();          // immediate first load
+  wifiRefreshTimer = setInterval(wifiLoadStatus, 5000);  // then every 5s
+}
+function stopWifiRefresh() {
+  if (wifiRefreshTimer) { clearInterval(wifiRefreshTimer); wifiRefreshTimer = null; }
 }
 
 function chartSetMode(mode) {
@@ -3550,9 +3680,11 @@ function showTab(name){
   window.scrollTo(0,0);
 
   stopChartRefresh();
+  stopWifiRefresh();
   if(name==='programs'){showProgList();loadPrograms();}
   if(name==='chart'){chartInitInteraction();chartLoadSessions();startChartRefresh();updateChartFollowBtn();}
   if(name==='pid'){renderZoneTable(lastZones,lastStatus.setpoint||0);updateAutotuneMethodInfo();loadRampTuneZones();loadThermalModel();}
+  if(name==='settings'){startWifiRefresh();}
 }
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab)));
 
@@ -3575,6 +3707,319 @@ window.addEventListener('resize', () => {
   }
 });
 
+
+// ── WiFi Setup ────────────────────────────────────────────────────────────────
+
+// Tracks whether the currently selected SSID has a saved NM profile
+let _wifiSelectedSaved = false;
+
+async function wifiLoadStatus() {
+  const el = document.getElementById('wifi-current-status');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/wifi/status');
+    const d   = await res.json();
+    if (d.ok && d.ssid) {
+      el.innerHTML = `<span style="color:var(--accent);">✔ Connected</span> — <strong style="color:var(--text);">${d.ssid}</strong><br>IP: <code style="color:var(--accent);background:var(--panel2);padding:2px 8px;border-radius:5px;">${d.ip || '—'}</code>`;
+    } else {
+      el.innerHTML = '<span style="color:var(--yellow);">⚠ Not connected to any network</span>';
+    }
+  } catch(e) {
+    el.textContent = 'Unable to fetch WiFi status.';
+  }
+  wifiLoadSaved();
+}
+
+async function wifiScan(btn) {
+  const orig = btn.textContent;
+  btn.textContent = 'Scanning…';
+  btn.disabled = true;
+  const resDiv = document.getElementById('wifi-scan-results');
+  resDiv.style.display = 'block';
+  resDiv.innerHTML = '<div style="padding:12px 14px;color:var(--text2);font-size:14px;">Scanning for networks…</div>';
+  try {
+    const res = await fetch('/api/wifi/scan');
+    const d   = await res.json();
+    if (!d.ok || !d.networks.length) {
+      resDiv.innerHTML = '<div style="padding:12px 14px;color:var(--text2);font-size:14px;">No networks found. Try again.</div>';
+    } else {
+      resDiv.innerHTML = '';
+      d.networks.forEach(n => {
+        const bars   = n.signal >= -55 ? '▂2▄4▄6█' : n.signal >= -70 ? '▂2▄4▄6' : n.signal >= -80 ? '▂2▄4' : '▂2';
+        const sigCol = n.signal >= -55 ? 'var(--accent)' : n.signal >= -70 ? 'var(--yellow)' : 'var(--text2)';
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:15px;';
+        const left = document.createElement('span');
+        if (n.saved) {
+          const badge = document.createElement('span');
+          badge.style.cssText = 'font-size:11px;background:var(--accent);color:#fff;border-radius:4px;padding:2px 6px;margin-right:6px;';
+          badge.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="#fff" style="vertical-align:middle;margin-right:3px;"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0v2z"/></svg>SAVED';
+          left.appendChild(badge);
+        }
+        left.appendChild(document.createTextNode(n.ssid));
+        const right = document.createElement('span');
+        right.style.cssText = 'color:' + sigCol + ';font-size:13px;letter-spacing:-1px;';
+        right.textContent = bars;
+        row.appendChild(left);
+        row.appendChild(right);
+        const handler = (function(ssid, saved) {
+          return function() { wifiPickNetwork(ssid, saved, row); };
+        })(n.ssid, n.saved);
+        row.addEventListener('click', handler);
+        row.addEventListener('touchstart', function(e) { e.preventDefault(); handler(); }, {passive: false});
+        resDiv.appendChild(row);
+      });
+    }
+  } catch(e) {
+    resDiv.innerHTML = '<div style="padding:12px 14px;color:var(--red,#e74c3c);font-size:14px;">Scan failed. Check that the Pi has WiFi hardware.</div>';
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+function wifiPickNetwork(ssid, isSaved, row) {
+  // Highlight selected row
+  document.querySelectorAll('#wifi-scan-results > div').forEach(r => r.style.background = '');
+  row.style.background = 'var(--panel)';
+
+  // Populate SSID field
+  _wifiSelectedSaved = isSaved;
+  kbdValues['wifi-ssid'] = ssid;
+  document.getElementById('wifi-ssid').value = ssid;
+  const dispEl = document.getElementById('wifi-ssid-display');
+  dispEl.textContent = ssid;
+  dispEl.style.color = 'var(--text)';
+
+  // Show/hide password field depending on whether credentials are saved
+  const pwWrap = document.getElementById('wifi-password-wrap');
+  if (isSaved) {
+    pwWrap.style.display = 'none';
+    // Clear any previously typed password so we don't accidentally send it
+    kbdValues['wifi-password'] = '';
+    document.getElementById('wifi-password').value = '';
+    const pwDisp = document.getElementById('wifi-password-display');
+    pwDisp.textContent = 'Tap to enter password';
+    pwDisp.style.color = 'var(--text2)';
+  } else {
+    pwWrap.style.display = '';
+    setTimeout(() => openKeyboard('wifi-password', 'WiFi Password', kbdValues['wifi-password'] || ''), 180);
+  }
+}
+
+async function wifiConnect() {
+  const ssid     = (kbdValues['wifi-ssid'] || document.getElementById('wifi-ssid').value || '').trim();
+  const password = _wifiSelectedSaved ? '' : (kbdValues['wifi-password'] || document.getElementById('wifi-password').value || '').trim();
+  const msgEl    = document.getElementById('wifi-connect-msg');
+  if (!ssid) {
+    msgEl.style.display = 'block';
+    msgEl.style.background = 'rgba(243,156,18,.15)';
+    msgEl.style.color = 'var(--yellow)';
+    msgEl.textContent = '⚠ Enter or scan for a network name first.';
+    return;
+  }
+  msgEl.style.display = 'block';
+  msgEl.style.background = 'var(--panel2)';
+  msgEl.style.color = 'var(--text2)';
+  msgEl.textContent = `Connecting to "${ssid}"…`;
+  try {
+    const res = await fetch('/api/wifi/connect', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ssid, password})
+    });
+    const d = await res.json();
+    if (d.ok) {
+      msgEl.style.background = 'rgba(39,174,96,.15)';
+      msgEl.style.color = 'var(--accent,#27ae60)';
+      msgEl.textContent = `⌛ Waiting for connection to "${ssid}"…`;
+      _wifiSwitching = true;  // tells SSE onopen to reload when Pi comes back
+      _wifiPollConnection(ssid, msgEl, 0);
+    } else {
+      msgEl.style.background = 'rgba(231,76,60,.15)';
+      msgEl.style.color = 'var(--red,#e74c3c)';
+      msgEl.textContent = `✘ Error: ${d.error}`;
+    }
+  } catch(e) {
+    msgEl.style.background = 'rgba(231,76,60,.15)';
+    msgEl.style.color = 'var(--red,#e74c3c)';
+    msgEl.textContent = '✘ Request failed. The Pi may already be switching networks.';
+  }
+}
+
+function _wifiPollConnection(targetSsid, msgEl, attempts) {
+  const MAX_ATTEMPTS = 20;   // 20 × 2s = 40s timeout
+  const INTERVAL_MS  = 2000;
+  if (attempts >= MAX_ATTEMPTS) {
+    _wifiSwitching = false;  // cancel reload on timeout
+    msgEl.style.background = 'rgba(243,156,18,.15)';
+    msgEl.style.color = 'var(--yellow)';
+    msgEl.textContent = `⚠ Timed out waiting for "${targetSsid}". Check the password and try again.`;
+    return;
+  }
+  setTimeout(async () => {
+    try {
+      const res = await fetch('/api/wifi/status');
+      const d   = await res.json();
+      if (d.ok && d.ssid === targetSsid) {
+        // Connected — reset the whole WiFi UI back to baseline
+        _wifiResetUI();
+        wifiLoadStatus();
+        showToast(`Connected to "${targetSsid}"`, 'success');
+      } else {
+        // Still connecting — update counter and try again
+        const remaining = Math.round(((MAX_ATTEMPTS - attempts) * INTERVAL_MS) / 1000);
+        msgEl.textContent = `⌛ Waiting for "${targetSsid}"… (${remaining}s)`;
+        _wifiPollConnection(targetSsid, msgEl, attempts + 1);
+      }
+    } catch(e) {
+      // Fetch failed — Pi may be mid-switch; keep polling
+      _wifiPollConnection(targetSsid, msgEl, attempts + 1);
+    }
+  }, INTERVAL_MS);
+}
+
+function _wifiResetUI() {
+  // Clear SSID field
+  kbdValues['wifi-ssid'] = '';
+  document.getElementById('wifi-ssid').value = '';
+  const ssidDisp = document.getElementById('wifi-ssid-display');
+  ssidDisp.textContent = 'Tap to enter SSID';
+  ssidDisp.style.color = 'var(--text2)';
+  // Clear password field
+  kbdValues['wifi-password'] = '';
+  document.getElementById('wifi-password').value = '';
+  const pwDisp = document.getElementById('wifi-password-display');
+  pwDisp.textContent = 'Tap to enter password';
+  pwDisp.style.color = 'var(--text2)';
+  // Show password field again (in case it was hidden for a saved network)
+  document.getElementById('wifi-password-wrap').style.display = '';
+  _wifiSelectedSaved = false;
+  // Hide scan results
+  const scanDiv = document.getElementById('wifi-scan-results');
+  scanDiv.style.display = 'none';
+  scanDiv.innerHTML = '';
+  // Hide connect message
+  const msgEl = document.getElementById('wifi-connect-msg');
+  msgEl.style.display = 'none';
+  msgEl.textContent = '';
+}
+
+async function wifiLoadSaved() {
+  const el = document.getElementById('wifi-saved-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/wifi/saved');
+    const d   = await res.json();
+    if (!d.ok || !d.saved.length) {
+      el.innerHTML = '<div style="padding:12px 14px;color:var(--text2);font-size:14px;">No saved networks.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    d.saved.forEach(function(entry) {
+      const ssid      = entry.ssid;
+      const isDefault = entry.default;
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);font-size:15px;';
+
+      // Star button — filled orange = default, outline grey = not
+      const starBtn = document.createElement('button');
+      starBtn.title = isDefault ? 'Default network (auto-connects first)' : 'Set as default';
+      starBtn.style.cssText = 'background:none;border:none;font-size:22px;cursor:pointer;padding:0 4px;flex-shrink:0;line-height:1;';
+      starBtn.textContent = isDefault ? '★' : '☆';
+      starBtn.style.color = isDefault ? 'var(--accent)' : 'var(--text2)';
+      (function(s, sb) {
+        const handler = function() { wifiSetDefault(s, sb); };
+        sb.addEventListener('click', handler);
+        sb.addEventListener('touchstart', function(e) { e.preventDefault(); handler(); }, {passive: false});
+      })(ssid, starBtn);
+
+      // Label
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;color:var(--text);';
+      label.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:6px;opacity:0.8;"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0v2z"/></svg>' + ssid;
+      if (isDefault) {
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:11px;background:var(--accent);color:#fff;border-radius:4px;padding:2px 6px;margin-left:8px;';
+        badge.textContent = 'DEFAULT';
+        label.appendChild(badge);
+      }
+
+      // Forget button
+      const forgetBtn = document.createElement('button');
+      forgetBtn.className = 'btn btn-danger btn-sm';
+      forgetBtn.style.flexShrink = '0';
+      forgetBtn.textContent = 'Forget';
+      (function(s, b) {
+        b.addEventListener('click', function() { wifiForget(s, b); });
+        b.addEventListener('touchstart', function(e) { e.preventDefault(); wifiForget(s, b); }, {passive: false});
+      })(ssid, forgetBtn);
+
+      row.appendChild(starBtn);
+      row.appendChild(label);
+      row.appendChild(forgetBtn);
+      el.appendChild(row);
+    });
+  } catch(e) {
+    el.innerHTML = '<div style="padding:12px 14px;color:var(--text2);font-size:14px;">Unable to load saved networks.</div>';
+  }
+}
+
+async function wifiSetDefault(ssid, starBtn) {
+  starBtn.textContent = '⌛';
+  starBtn.style.color = 'var(--text2)';
+  try {
+    const res = await fetch('/api/wifi/set-priority', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ssid})
+    });
+    const d = await res.json();
+    if (d.ok) {
+      showToast('★ Default set to ' + ssid, 'success');
+      wifiLoadSaved();
+    } else {
+      showToast(d.error || 'Failed to set default', 'error');
+      wifiLoadSaved();
+    }
+  } catch(e) {
+    showToast('Request failed', 'error');
+    wifiLoadSaved();
+  }
+}
+
+async function wifiForget(ssid, btn) {
+  if (!confirm(`Forget "${ssid}"?\n\nThe saved password will be deleted. You will need to re-enter it to reconnect.`)) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await fetch('/api/wifi/forget', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ssid})
+    });
+    const d = await res.json();
+    if (d.ok) {
+      showToast(`Forgot "${ssid}"`, 'success');
+      wifiLoadSaved();
+      // If we just forgot the currently selected network, show the password field again
+      const curSsid = document.getElementById('wifi-ssid').value;
+      if (curSsid === ssid) {
+        _wifiSelectedSaved = false;
+        document.getElementById('wifi-password-wrap').style.display = '';
+      }
+    } else {
+      showToast(d.error || 'Forget failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Forget';
+    }
+  } catch(e) {
+    showToast('Request failed', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Forget';
+  }
+}
+
+// WiFi status loads via showTab() hook above
 // ── Shutdown ──────────────────────────────────────────────────────────────────
 function confirmShutdown(){
   document.getElementById('shutdown-modal').style.display='flex';
