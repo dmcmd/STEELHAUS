@@ -22,6 +22,8 @@ echo ""
 # ── 1. Update system packages ─────────────────────────────────────────────────
 echo "[1/8] Updating system packages..."
 apt-get update -qq
+# Install cage 0.1.4 specifically — 0.2.0 from the RPi repo broke XCURSOR_THEME support
+# and the cursor cannot be hidden on that version.
 apt-get install -y \
   python3 python3-pip \
   sqlite3 \
@@ -33,7 +35,9 @@ apt-get install -y \
   unclutter \
   x11-xserver-utils \
   2>/dev/null
-# cage is NOT used — xinit/X11 is used exclusively on Pi 4 Bookworm
+apt-get install -y --allow-downgrades cage=0.1.4-4 2>/dev/null || apt-get install -y cage 2>/dev/null
+# Pin cage to prevent auto-upgrade back to 0.2.0
+echo "cage hold" | dpkg --set-selections
 
 # Verify critical packages installed successfully
 MISSING=""
@@ -124,7 +128,7 @@ echo "[5/8] Configuring kiosk display..."
 #
 # Boot flow after setup:
 #   kernel -> TTY1 auto-login as pi -> .bash_profile -> start_kiosk.sh
-#   -> xinit -> xinitrc.sh -> xrandr rotate -> touch fix -> Chromium fullscreen
+#   -> cage (or xinit fallback) -> Chromium fullscreen
 #   SSH sessions are NOT affected (tty check guards .bash_profile).
 
 # Force X11 display server
@@ -136,6 +140,9 @@ else
   echo "      raspi-config not found — skipping display server switch."
 fi
 
+# Install wlr-randr (used by cage)
+apt-get install -y wlr-randr 2>/dev/null || true
+
 # cage_wrapper.sh is NOT used — cage/Wayland causes display rotation and
 # touchscreen calibration failures on Pi 4 Bookworm. xinit/X11 is used instead.
 
@@ -146,18 +153,16 @@ cat > /home/pi/kiln_controller/xinitrc.sh << 'XINIT'
 #
 # Rotate display 90° CCW (portrait, connector at bottom).
 # xrandr --rotate left works with vc4-kms-v3d on Pi 4 Bookworm X11.
-# display_rotate= in config.txt is ignored by the KMS driver — do not use it.
 xrandr --output HDMI-1 --rotate left 2>/dev/null || \
-  xrandr --output HDMI-A-1 --rotate left 2>/dev/null || true
+  xrandr --output HDMI-A-1 --rotate left 2>/dev/null || \
+  xrandr --output HDMI-2 --rotate left 2>/dev/null || true
 
 # Fix touch input to match rotated display.
-# Works with any touchscreen brand — finds the first non-mouse, non-virtual
-# slave pointer and applies the identity matrix. The udev rule handles the
-# actual 90° CCW calibration at the driver level via libinput, so xinput
-# must stay at identity (1 0 0 / 0 1 0 / 0 0 1) to avoid double-rotating.
-TOUCH_ID=$(xinput list | grep -i "slave.*pointer" | \
-           grep -iv "virtual\|vc4\|hdmi\|mouse" | \
-           grep -o 'id=[0-9]*' | head -1 | cut -d= -f2)
+# The udev rule (99-steelhaus-touch.rules) applies the libinput calibration
+# matrix at the driver level, so the xinput Coordinate Transformation Matrix
+# must be left as identity (1 0 0 / 0 1 0 / 0 0 1) to avoid double-rotation.
+TOUCH_ID=$(xinput list --id-only "yldzkj USB2IIC_CTP_CONTROL" 2>/dev/null || \
+           xinput list | grep -i touch | grep -o 'id=[0-9]*' | head -1 | cut -d= -f2)
 if [ -n "$TOUCH_ID" ]; then
   xinput set-prop "$TOUCH_ID" "Coordinate Transformation Matrix" 1 0 0 0 1 0 0 0 1
 fi
@@ -248,17 +253,12 @@ if [ "$KIOSK_OK" = true ]; then
 fi
 
 echo "      TTY1 auto-login + .bash_profile kiosk launch configured."
-echo "      Boot: kernel -> TTY1 auto-login -> xinit -> Chromium."
+echo "      Boot: kernel -> TTY1 auto-login -> cage -> Chromium."
 echo "      SSH access unaffected."
 
 # Display rotation is handled via xrandr --rotate left inside xinitrc.sh.
-# display_rotate= is ignored by the vc4-kms-v3d KMS driver on Bookworm
-# and must NOT be set — remove it if present from a previous install.
-CONFIG=/boot/firmware/config.txt
-if [ -f "$CONFIG" ]; then
-  sed -i '/^display_rotate=/d' "$CONFIG"
-  echo "      Removed display_rotate from config.txt (not used with KMS driver)."
-fi
+# display_rotate= is ignored by the vc4-kms-v3d driver used on Bookworm
+# and must NOT be set — it causes confusion without effect.
 
 # ── 5a. Create blank cursor theme ────────────────────────────────────────────
 echo "[5a] Creating blank cursor theme..."
@@ -310,7 +310,7 @@ print("Blank cursor files written.")
 PYEOF
 echo "      Blank cursor theme created."
 
-# Set cursor theme via GTK settings (X11)
+# cage 0.2.0 reads cursor theme from GTK settings, not XCURSOR_THEME env var
 mkdir -p /home/pi/.config/gtk-3.0
 cat > /home/pi/.config/gtk-3.0/settings.ini << 'GTK'
 [Settings]
@@ -331,44 +331,24 @@ chown -R pi:pi /home/pi/.icons
 echo "      GTK cursor theme set to blank."
 
 # ── 5b. Touch input calibration udev rule ────────────────────────────────────
-# Applies a 90° CCW libinput calibration matrix to any USB touchscreen.
-# Matches on USB vendor ID and common name patterns rather than a specific
-# device name, so it works with yldzkj, Waveshare, Elecrow, and other
-# common 7" HDMI touchscreens. The matrix "0 -1 1 1 0 0" rotates raw touch
-# coordinates 90° CCW to match the xrandr --rotate left display orientation.
+# Applies the 90-degree calibration matrix for the yldzkj touchscreen used
+# with the portrait-mounted 7" display. Installed on all systems.
 cat > /etc/udev/rules.d/99-steelhaus-touch.rules << 'UDEV'
-# Rotate touch input 90° CCW for any USB touchscreen (portrait display)
-
-# Match by USB vendor ID 222a (covers yldzkj and many compatible chips)
 ACTION=="add|change", KERNEL=="event*", \
-  ATTRS{idVendor}=="222a", \
+  ATTRS{name}=="yldzkj USB2IIC_CTP_CONTROL", \
   ENV{LIBINPUT_CALIBRATION_MATRIX}="0 -1 1 1 0 0", \
   ENV{ID_INPUT_MOUSE}="", \
   ENV{ID_INPUT_MICE}=""
 
-# Match by CTP in device name (common across many touchscreen brands)
-ACTION=="add|change", KERNEL=="event*", \
-  ATTRS{name}=="*CTP*", \
-  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 -1 1 1 0 0", \
-  ENV{ID_INPUT_MOUSE}="", \
-  ENV{ID_INPUT_MICE}=""
-
-# Match by touchscreen in device name (Waveshare, Elecrow, etc.)
-ACTION=="add|change", KERNEL=="event*", \
-  ATTRS{name}=="*[Tt]ouchscreen*", \
-  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 -1 1 1 0 0", \
-  ENV{ID_INPUT_MOUSE}="", \
-  ENV{ID_INPUT_MICE}=""
-
-# Suppress mouse node for CTP devices
+# Also suppress the mice/mouse0 node for this device
 ACTION=="add|change", KERNEL=="mouse*", \
-  ATTRS{name}=="*CTP*", \
+  ATTRS{name}=="yldzkj USB2IIC_CTP_CONTROL", \
   ENV{ID_INPUT_MOUSE}="", \
   ENV{ID_INPUT_MICE}=""
 UDEV
 udevadm control --reload-rules
 udevadm trigger
-echo "      Touch calibration udev rule installed (matches any USB touchscreen)."
+echo "      Touch calibration udev rule installed."
 
 # ── 6. Configure firewall ─────────────────────────────────────────────────────
 echo "[6/8] Configuring firewall..."
