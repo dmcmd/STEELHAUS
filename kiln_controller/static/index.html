@@ -1588,7 +1588,7 @@ function connectSSE(){
     }
   };
   es.onmessage=e=>{
-    try{lastStatus=JSON.parse(e.data);updateDashboard(lastStatus);chartUpdateStatusBar(lastStatus);}
+    try{lastStatus=JSON.parse(e.data);updateDashboard(lastStatus);if(!simMode)chartUpdateStatusBar(lastStatus);}
     catch(err){console.warn('SSE parse error:',err);}
   };
   es.onerror=()=>{
