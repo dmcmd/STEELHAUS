@@ -1490,7 +1490,7 @@ function simTick(){
   }
 
   const loss=0.015*(simTemp-20);
-  simTemp=Math.max(20,simTemp+(output/100*4.5-loss));
+  simTemp=Math.max(20,simTemp+(output/100*16.2-loss));
 
   const now=Date.now()/1000;
   const sp=simAutotuning?simAtTargetC:simSetpoint;
